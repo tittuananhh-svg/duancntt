@@ -32,7 +32,23 @@ import {
   updateSinhVienHandler,
 } from '../controllers/sinhvien.controllers';
 
+import {
+  createHocKyHandler,
+  deleteHocKyHandler,
+  getListHocKy,
+  getOneHocKy,
+  updateHocKyHandler,
+} from '../controllers/hocky.controller';
 
+import {
+  createPhanBoLopHocPhanHandler,
+  deleteLopHocPhanHandler,
+  getDanhSachLopTheoKyHandler,
+  getLopHocPhanDetailHandler,
+  getMonHocTheoKyHandler,
+  getPhongTheoKyHandler,
+  updateLopHocPhanPartialHandler,
+} from '../controllers/lophocphan.controller';
 
 const router = Router();
 
@@ -90,6 +106,32 @@ router.get('/sinh-vien/:id', getOneSinhVien);
 router.post('/sinh-vien', createSinhVienHandler);
 router.put('/sinh-vien/:id', updateSinhVienHandler);
 router.delete('/sinh-vien/:id', deleteSinhVienHandler);
+
+// ===== HỌC KỲ =====
+router.get('/hoc-ky', getListHocKy);
+router.get('/hoc-ky/:id', getOneHocKy);
+router.post('/hoc-ky', createHocKyHandler);
+router.put('/hoc-ky/:id', updateHocKyHandler);
+router.delete('/hoc-ky/:id', deleteHocKyHandler);
+
+// ===== LỚP HỌC PHẦN =====
+
+// Thêm mới phân bổ
+router.post('/lop-hoc-phan/phan-bo', createPhanBoLopHocPhanHandler);
+
+// 3 API báo cáo theo kỳ (ĐẶT TRƯỚC /:ma_lop_hp)
+router.get('/lop-hoc-phan/mon-hoc-theo-ky/:ky_hoc_id', getMonHocTheoKyHandler);
+router.get('/lop-hoc-phan/phong-theo-ky/:ky_hoc_id', getPhongTheoKyHandler);
+router.get('/lop-hoc-phan/danh-sach-theo-ky/:ky_hoc_id', getDanhSachLopTheoKyHandler);
+
+// Thông tin theo mã lớp HP
+router.get('/lop-hoc-phan/:ma_lop_hp', getLopHocPhanDetailHandler);
+
+// Update partial (chỉ field truyền lên)
+router.put('/lop-hoc-phan/:ma_lop_hp', updateLopHocPhanPartialHandler);
+
+// Xóa
+
 
 
 

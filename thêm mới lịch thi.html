@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Thêm mới lịch thi</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+  <style>
+    body { padding: 15px; }
+    .form-row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+    .form-row .form-group { margin-bottom: 10px; }
+    .w-180 { width: 180px; }
+    .w-220 { width: 220px; }
+    .w-260 { width: 260px; }
+    .table-wrap { border:1px solid #eee; border-radius:6px; overflow:auto; max-height: 55vh; }
+    table { margin:0; }
+    th { white-space:nowrap; }
+    td { vertical-align:middle !important; }
+    .btn-xs { padding: 3px 8px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .small-note { color:#777; font-size:12px; }
+    .row-actions { display:flex; gap:6px; flex-wrap:wrap; }
+    .select2-container { min-width: 220px; }
+    .col-min { min-width: 160px; }
+    .col-min2 { min-width: 220px; }
+
+    /* Modal SV */
+    .sv-list-wrap { max-height: 55vh; overflow:auto; border:1px solid #eee; border-radius:6px; }
+    .sv-item { display:flex; gap:10px; padding:8px 10px; border-bottom:1px solid #f1f1f1; }
+    .sv-item:last-child { border-bottom:0; }
+    .sv-badge { min-width: 60px; text-align:center; }
+  </style>
+</head>
+
+<body>
+
+  <h3 style="margin-top:0;">Thêm mới lịch thi</h3>
+
+  <div class="panel panel-default">
+    <div class="panel-heading"><b>Thông tin tạo lịch</b></div>
+    <div class="panel-body">
+      <div class="form-row">
+
+        <div class="form-group w-220">
+          <label>Học kỳ</label>
+          <select id="hocKy" class="form-control">
+            <option value="">-- Chọn học kỳ --</option>
+          </select>
+        </div>
+
+        <div class="form-group w-260">
+          <label>Môn học</label>
+          <select id="monHoc" class="form-control">
+            <option value="">-- Chọn môn học --</option>
+          </select>
+        </div>
+
+        <div class="form-group w-180">
+          <label>Số lượng sinh viên</label>
+          <input id="soLuongSV" type="number" min="0" class="form-control" value="200" />
+        </div>
+
+        <div class="form-group w-180">
+          <label>Số lượng (số dòng lịch thi)</label>
+          <input id="soDong" type="number" min="1" class="form-control" value="5" />
+        </div>
+
+        <div class="form-group">
+          <button id="btnTao" class="btn btn-primary">
+            <span class="glyphicon glyphicon-plus"></span> Tạo
+          </button>
+        </div>
+
+        <div class="form-group">
+          <button id="btnThemNhanhSV" class="btn btn-info" disabled>
+            <span class="glyphicon glyphicon-user"></span> Thêm nhanh sinh viên
+          </button>
+          <div class="small-note">Chia SV theo sức chứa phòng (capacity). Mặc định 50 nếu chưa chọn phòng.</div>
+        </div>
+
+        <div class="form-group">
+          <button id="btnXacNhan" class="btn btn-success" disabled>
+            <span class="glyphicon glyphicon-ok"></span> Xác nhận
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="table table-bordered table-striped" id="tblLichThi">
+      <thead>
+        <tr>
+          <th style="width:60px;">STT</th>
+          <th style="width:170px;">Chức năng</th>
+          <th class="col-min">Mã kì thi</th>
+          <th class="col-min">Môn thi</th>
+          <th class="col-min">Phòng thi</th>
+          <th class="col-min2">Giáo viên coi thi</th>
+          <th class="col-min2">Giáo viên chấm thi</th>
+          <th class="col-min">Ca thi từ</th>
+          <th class="col-min">Ca thi tới</th>
+          <th style="width:120px;">Số lượng SV</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="10" style="text-align:center;color:#999;">Chưa có dữ liệu. Hãy bấm <b>Tạo</b>.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr />
+
+  <div class="row">
+    <div class="col-md-6">
+      <h4>Payload #1: <span class="mono">arr_lichthi</span></h4>
+      <textarea id="outLichThi" class="form-control mono" rows="14" placeholder="Sẽ xuất JSON tại đây..." readonly></textarea>
+    </div>
+    <div class="col-md-6">
+      <h4>Payload #2: <span class="mono">arr_phanbo_sv</span></h4>
+      <textarea id="outPhanBo" class="form-control mono" rows="14" placeholder="Sẽ xuất JSON tại đây..." readonly></textarea>
+    </div>
+  </div>
+
+  <!-- Modal xem sinh viên -->
+  <div class="modal fade" id="modalSV" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title"><b>Danh sách sinh viên đã phân bổ</b></h4>
+          <div class="small-note" id="modalSVMeta"></div>
+        </div>
+        <div class="modal-body">
+          <div id="modalSVSummary" class="alert alert-info" style="margin-bottom:10px;"></div>
+          <div class="sv-list-wrap" id="modalSVList"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- jQuery + Bootstrap JS + Select2 -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/js/bootstrap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+  <script>
+    const DATA = {
+      hocKy: [
+        { id: 'HK1-2025', text: 'Học kỳ 1 - 2025' },
+        { id: 'HK2-2025', text: 'Học kỳ 2 - 2025' },
+        { id: 'HK1-2026', text: 'Học kỳ 1 - 2026' },
+      ],
+      monHoc: [
+        { id: 'MH001', text: 'Toán cao cấp' },
+        { id: 'MH002', text: 'Cơ sở dữ liệu' },
+        { id: 'MH003', text: 'Lập trình Web' },
+      ],
+      phongThi: [
+        { id: 'P101', text: 'Phòng 101', capacity: 50 },
+        { id: 'P102', text: 'Phòng 102', capacity: 50 },
+        { id: 'P201', text: 'Phòng 201', capacity: 60 },
+        { id: 'LAB1', text: 'Phòng LAB 1', capacity: 40 },
+      ],
+      caThi: [
+        { id: 'CA1', text: 'Ca 1 (07:30 - 09:00)' },
+        { id: 'CA2', text: 'Ca 2 (09:30 - 11:00)' },
+        { id: 'CA3', text: 'Ca 3 (13:30 - 15:00)' },
+        { id: 'CA4', text: 'Ca 4 (15:30 - 17:00)' },
+      ],
+      giangVien: [
+        { id: 'GV001', text: 'Nguyễn Văn A' },
+        { id: 'GV002', text: 'Trần Thị B' },
+        { id: 'GV003', text: 'Lê Văn C' },
+        { id: 'GV004', text: 'Phạm Thị D' },
+        { id: 'GV005', text: 'Đặng Văn E' },
+      ],
+      sinhVien: Array.from({length: 200}, (_, i) => {
+        const stt = (i+1).toString().padStart(3,'0');
+        return { id: 'SV' + stt, text: 'Sinh viên ' + stt };
+      })
+    };
+
+    function pad(n, len=3) { return String(n).padStart(len, '0'); }
+    function todayYMD() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const da = String(d.getDate()).padStart(2,'0');
+      return `${y}${m}${da}`;
+    }
+    function genMaKiThi(hocKyId, monId, rowIndex1based) {
+      const hk = (hocKyId || 'HK').replace(/\s+/g,'');
+      const mh = (monId || 'MH');
+      return `${hk}_${mh}_${todayYMD()}_${pad(rowIndex1based, 3)}`;
+    }
+    function getTextFromSelect($sel) { return $sel.find('option:selected').text().trim(); }
+    function toInt(v, def=0) { const n = parseInt(v, 10); return isNaN(n) ? def : n; }
+    function uniqueArray(arr) { return Array.from(new Set((arr || []).map(String))).filter(Boolean); }
+
+    function fillSelect($sel, items, placeholder) {
+      $sel.empty();
+      $sel.append(`<option value="">${placeholder || '-- Chọn --'}</option>`);
+      items.forEach(it => $sel.append(`<option value="${it.id}">${it.text}</option>`));
+    }
+    function buildOptionsForRooms() {
+      return DATA.phongThi.map(p => `<option value="${p.id}" data-capacity="${p.capacity}">${p.text} (max ${p.capacity})</option>`).join('');
+    }
+    function buildOptionsForCa() {
+      return DATA.caThi.map(c => `<option value="${c.id}">${c.text}</option>`).join('');
+    }
+    function buildOptionsForGV() {
+      return DATA.giangVien.map(g => `<option value="${g.id}">${g.text}</option>`).join('');
+    }
+
+    function getRoomCapacity($tr) {
+      const $opt = $tr.find('.phong-thi option:selected');
+      const cap = toInt($opt.data('capacity'), 0);
+      return cap;
+    }
+
+    function renderModalSV(students, meta) {
+      const $list = $('#modalSVList');
+      const $sum  = $('#modalSVSummary');
+      const $meta = $('#modalSVMeta');
+
+      $list.empty();
+
+      const total = students.length;
+      const cap = meta.capacity || 0;
+
+      $meta.text(`Mã kì thi: ${meta.ma_ky_thi || ''} | Phòng: ${meta.phong_thi_text || ''} | Sức chứa: ${cap || '—'}`);
+
+      if (total === 0) {
+        $sum.removeClass('alert-info').addClass('alert-warning')
+          .text('Chưa có sinh viên nào được phân bổ cho dòng này. Hãy bấm "Thêm nhanh sinh viên".');
+        $list.html('<div style="padding:10px;color:#999;text-align:center;">(Danh sách trống)</div>');
+        return;
+      }
+
+      $sum.removeClass('alert-warning').addClass('alert-info')
+        .text(`Đã phân bổ: ${total} sinh viên${cap ? ` / ${cap} chỗ` : ''}.`);
+
+      students.forEach((sv, idx) => {
+        $list.append(`
+          <div class="sv-item">
+            <div class="sv-badge"><span class="label label-primary">${idx+1}</span></div>
+            <div><b class="mono">${sv.id}</b> — ${sv.text}</div>
+          </div>
+        `);
+      });
+    }
+
+    $(function() {
+      fillSelect($('#hocKy'), DATA.hocKy, '-- Chọn học kỳ --');
+      fillSelect($('#monHoc'), DATA.monHoc, '-- Chọn môn học --');
+
+      $('#btnTao').on('click', function() {
+        const hocKyId = $('#hocKy').val();
+        const monId   = $('#monHoc').val();
+        const monText = getTextFromSelect($('#monHoc'));
+
+        const soDong = Math.max(1, toInt($('#soDong').val(), 1));
+        const soLuongSV = Math.max(0, toInt($('#soLuongSV').val(), 0));
+
+        if (!hocKyId) { alert('Vui lòng chọn Học kỳ'); return; }
+        if (!monId)   { alert('Vui lòng chọn Môn học'); return; }
+
+        const roomOpts = buildOptionsForRooms();
+        const caOpts = buildOptionsForCa();
+        const gvOpts = buildOptionsForGV();
+
+        const $tbody = $('#tblLichThi tbody');
+        $tbody.empty();
+
+        for (let i = 1; i <= soDong; i++) {
+          const ma = genMaKiThi(hocKyId, monId, i);
+
+          const tr = `
+            <tr data-row="${i}">
+              <td style="text-align:center;">${i}</td>
+              <td>
+                <div class="row-actions">
+                  <button type="button" class="btn btn-default btn-xs btn-xem">Xem</button>
+                  <button type="button" class="btn btn-danger btn-xs btn-xoa">Xóa</button>
+                  <button type="button" class="btn btn-default btn-xs btn-dup">Nhân</button>
+                </div>
+              </td>
+              <td><input class="form-control input-sm ma-ky-thi" value="${ma}" readonly /></td>
+              <td><input class="form-control input-sm mon-thi" value="${monText}" readonly data-monid="${monId}" /></td>
+              <td>
+                <select class="form-control input-sm phong-thi">
+                  <option value="">-- Chọn phòng --</option>
+                  ${roomOpts}
+                </select>
+              </td>
+              <td>
+                <select class="form-control input-sm gv-coi" multiple>
+                  ${gvOpts}
+                </select>
+              </td>
+              <td>
+                <select class="form-control input-sm gv-cham" multiple>
+                  ${gvOpts}
+                </select>
+              </td>
+              <td>
+                <select class="form-control input-sm ca-tu">
+                  <option value="">-- Chọn ca --</option>
+                  ${caOpts}
+                </select>
+              </td>
+              <td>
+                <select class="form-control input-sm ca-toi">
+                  <option value="">-- Chọn ca --</option>
+                  ${caOpts}
+                </select>
+              </td>
+              <td style="width:120px;">
+                <input class="form-control input-sm so-luong-sv" type="number" min="0" value="${soLuongSV}" />
+                <div class="small-note"><span class="sv-filled">0</span> SV đã phân</div>
+              </td>
+            </tr>
+          `;
+          $tbody.append(tr);
+        }
+
+        // init select2 multi for GV
+        $('.gv-coi, .gv-cham').select2({
+          placeholder: 'Chọn giảng viên',
+          width: '100%',
+          allowClear: true
+        });
+
+        // init data students per row
+        $('#tblLichThi tbody tr').each(function() {
+          $(this).data('students', []);
+        });
+
+        $('#btnThemNhanhSV').prop('disabled', false);
+        $('#btnXacNhan').prop('disabled', false);
+
+        $('#outLichThi').val('');
+        $('#outPhanBo').val('');
+      });
+
+      // Xem SV đã phân
+      $(document).on('click', '.btn-xem', function() {
+        const $tr = $(this).closest('tr');
+        const students = ($tr.data('students') || []);
+        const ma_ky_thi = $tr.find('.ma-ky-thi').val();
+        const phong_id = $tr.find('.phong-thi').val() || '';
+        const phong_text = $tr.find('.phong-thi option:selected').text().trim() || '(Chưa chọn phòng)';
+        const cap = getRoomCapacity($tr) || 50;
+
+        renderModalSV(students, {
+          ma_ky_thi: ma_ky_thi,
+          phong_thi_id: phong_id,
+          phong_thi_text: phong_text,
+          capacity: cap
+        });
+
+        $('#modalSV').modal('show');
+      });
+
+      // Xóa dòng
+      $(document).on('click', '.btn-xoa', function() {
+        $(this).closest('tr').remove();
+        reIndexTable(false);
+      });
+
+      // Nhân dòng
+      $(document).on('click', '.btn-dup', function() {
+        const $tr = $(this).closest('tr');
+        const $clone = $tr.clone(true, true);
+
+        // Clone data students luôn
+        const students = ($tr.data('students') || []).slice();
+        $clone.data('students', students);
+
+        // Remove select2 containers from clone and re-init later
+        $clone.find('.select2-container').remove();
+        $clone.find('.gv-coi, .gv-cham').removeAttr('data-select2-id').removeClass('select2-hidden-accessible');
+
+        $('#tblLichThi tbody').append($clone);
+        reIndexTable(true);
+
+        $('.gv-coi, .gv-cham').select2({
+          placeholder: 'Chọn giảng viên',
+          width: '100%',
+          allowClear: true
+        });
+      });
+
+      function reIndexTable(regenMa) {
+        const hocKyId = $('#hocKy').val();
+        const monId = $('#monHoc').val();
+        const monText = getTextFromSelect($('#monHoc'));
+        $('#tblLichThi tbody tr').each(function(idx) {
+          const i = idx + 1;
+          $(this).attr('data-row', i);
+          $(this).find('td:first').text(i);
+          if (regenMa) $(this).find('.ma-ky-thi').val(genMaKiThi(hocKyId, monId, i));
+          $(this).find('.mon-thi').val(monText).attr('data-monid', monId);
+          if (!$(this).data('students')) $(this).data('students', []);
+        });
+      }
+
+      // Thêm nhanh SV
+      $('#btnThemNhanhSV').on('click', function() {
+        const $rows = $('#tblLichThi tbody tr');
+        if ($rows.length === 0) { alert('Chưa có dòng lịch thi.'); return; }
+
+        const totalSV = DATA.sinhVien.slice();
+        if (totalSV.length === 0) { alert('Danh sách sinh viên trống.'); return; }
+
+        let cursor = 0;
+
+        $rows.find('.sv-filled').text('0');
+        $rows.each(function() { $(this).data('students', []); });
+
+        $rows.each(function() {
+          if (cursor >= totalSV.length) return false;
+
+          const $tr = $(this);
+          const cap = getRoomCapacity($tr) || 50;
+
+          const remain = totalSV.length - cursor;
+          const take = Math.min(cap, remain);
+
+          const chunk = totalSV.slice(cursor, cursor + take);
+          cursor += take;
+
+          $tr.data('students', chunk);
+          $tr.find('.sv-filled').text(String(chunk.length));
+        });
+
+        if (cursor < totalSV.length) {
+          alert(`Đã phân ${cursor}/${totalSV.length} SV. Còn ${totalSV.length - cursor} SV chưa có phòng (tăng số dòng hoặc sức chứa).`);
+        } else {
+          alert(`Đã phân đủ ${totalSV.length} SV.`);
+        }
+      });
+
+      // Xác nhận -> 2 mảng
+      $('#btnXacNhan').on('click', function() {
+        const hocKyId = $('#hocKy').val();
+        const monId = $('#monHoc').val();
+
+        const arr_lichthi = [];
+        const arr_phanbo_sv = [];
+
+        $('#tblLichThi tbody tr').each(function(idx) {
+          const $tr = $(this);
+
+          const stt = idx + 1;
+          const ma_ky_thi = $tr.find('.ma-ky-thi').val().trim();
+
+          const mon_thi_text = $tr.find('.mon-thi').val().trim();
+          const phong_thi = $tr.find('.phong-thi').val() || '';
+          const ca_tu = $tr.find('.ca-tu').val() || '';
+          const ca_toi = $tr.find('.ca-toi').val() || '';
+          const so_luong_sv = Math.max(0, toInt($tr.find('.so-luong-sv').val(), 0));
+
+          const gv_coi = uniqueArray($tr.find('.gv-coi').val());
+          const gv_cham = uniqueArray($tr.find('.gv-cham').val());
+
+          arr_lichthi.push({
+            stt,
+            hoc_ky: hocKyId,
+            mon_id: monId,
+            mon_text: mon_thi_text,
+            ma_ky_thi,
+            phong_thi,
+            ca_tu,
+            ca_toi,
+            gv_coi,
+            gv_cham,
+            so_luong_sv
+          });
+
+          const students = ($tr.data('students') || []).map(s => ({ id: s.id, name: s.text }));
+          arr_phanbo_sv.push({
+            ma_ky_thi,
+            phong_thi,
+            students
+          });
+        });
+
+        $('#outLichThi').val(JSON.stringify(arr_lichthi, null, 2));
+        $('#outPhanBo').val(JSON.stringify(arr_phanbo_sv, null, 2));
+        alert('Đã tạo payload 2 mảng JSON.');
+      });
+
+    });
+  </script>
+</body>
+</html>

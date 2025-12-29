@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { selectWithFkRealText, refreshService, logoutService, registerService, loginService } from '../services/auth.service';
+import { selectWithFkRealText, refreshService, logoutService, registerService, loginService, changePasswordService  } from '../services/auth.service';
 import { sendSuccess, sendError } from '../utils/response';
-
+import { AuthRequest } from '../middlewares/authGuard';
 export async function login(req: Request, res: Response) {
   try {
     const { username, password } = req.body;
@@ -115,6 +115,61 @@ export async function register(req: Request, res: Response) {
     });
   }
 }
+
+export async function changePassword(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.userId; // ✅ đúng key theo authGuard
+    const { oldPassword, newPassword } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Chưa đăng nhập hoặc thiếu token'
+      });
+    }
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Vui lòng nhập mật khẩu cũ và mật khẩu mới'
+      });
+    }
+
+    try {
+      await changePasswordService({ userId, oldPassword, newPassword });
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'Đổi mật khẩu thành công'
+      });
+    } catch (e: any) {
+      if (e.message === 'USER_NOT_FOUND') {
+        return res.status(404).json({ status: 'error', message: 'Tài khoản không tồn tại' });
+      }
+      if (e.message === 'USER_BLOCKED') {
+        return res.status(403).json({ status: 'error', message: 'Tài khoản đã bị khóa' });
+      }
+      if (e.message === 'OLD_PASSWORD_INVALID') {
+        return res.status(400).json({ status: 'error', message: 'Mật khẩu cũ không đúng' });
+      }
+      if (e.message === 'PASSWORD_TOO_SHORT') {
+        return res.status(400).json({ status: 'error', message: 'Mật khẩu mới phải từ 6 ký tự' });
+      }
+      if (e.message === 'PASSWORD_SAME_AS_OLD') {
+        return res.status(400).json({ status: 'error', message: 'Mật khẩu mới phải khác mật khẩu cũ' });
+      }
+
+      throw e;
+    }
+  } catch (err) {
+    console.error('Change password error:', err);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Lỗi server'
+    });
+  }
+}
+
 export async function getTableWithText(req: Request, res: Response) {
   try {
     const { table } = req.params;
@@ -133,3 +188,4 @@ export async function getTableWithText(req: Request, res: Response) {
     });
   }
 }
+

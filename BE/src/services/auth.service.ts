@@ -288,6 +288,62 @@ export async function logoutService(refreshToken: string) {
   );
 }
 
+// đổi mk
+
+export async function changePasswordService(params: {
+  userId: number;
+  oldPassword: string;
+  newPassword: string;
+}) {
+  const { userId, oldPassword, newPassword } = params;
+
+  if (!oldPassword || !newPassword) {
+    throw new Error("Thiếu mật khẩu");
+  }
+
+  if (newPassword.length < 6) {
+    throw new Error("Mật khẩu mới phải từ 6 ký tự");
+  }
+
+  if (oldPassword === newPassword) {
+    throw new Error("Mật khẩu mới phải khác mật khẩu cũ");
+  }
+
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT id, password_hash, trang_thai_id
+     FROM users
+     WHERE id = ?
+     LIMIT 1`,
+    [userId]
+  );
+
+  if (rows.length === 0) {
+    throw new Error("Tài khoản không tồn tại");
+  }
+
+  const user = rows[0] as any;
+
+  if (user.trang_thai_id === 2) {
+    throw new Error("Tài khoản đã bị khóa");
+  }
+
+  const isMatch = await bcrypt.compare(oldPassword, user.password_hash);
+  if (!isMatch) {
+    throw new Error("Mật khẩu cũ không đúng");
+  }
+
+  const newHash = await bcrypt.hash(newPassword, 10);
+
+  const [result] = await pool.query<ResultSetHeader>(
+    `UPDATE users
+     SET password_hash = ?, updated_at = NOW()
+     WHERE id = ?`,
+    [newHash, userId]
+  );
+
+  return result.affectedRows > 0;
+}
+
 
 
 //tạo tk
@@ -299,6 +355,8 @@ interface CreateUserInput {
   user_type_id?: number;
   user_ref_id?: number | null;
 }
+
+
 
 export async function registerService(input: CreateUserInput) {
   const {

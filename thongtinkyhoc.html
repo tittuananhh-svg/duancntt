@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Thông tin kỳ học - Demo</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --line:#e5e7eb;
+      --primary:#2563eb;
+      --danger:#dc2626;
+      --ok:#16a34a;
+      --shadow: 0 8px 24px rgba(15,23,42,.08);
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: Arial, Helvetica, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .page{
+      max-width: 1200px;
+      margin: 18px auto;
+      padding: 0 14px 30px;
+    }
+
+    /* Header */
+    .headerCard{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .headerTop{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .hTitle{
+      margin:0;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing:.2px;
+    }
+    .hSub{
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.35;
+    }
+    .pillRow{
+      display:flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .pill{
+      background:#f8fafc;
+      border:1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 12px;
+      color:#0f172a;
+      display:flex;
+      gap: 8px;
+      align-items:center;
+    }
+    .pill b{font-weight:800}
+    .pill .dot{
+      width:8px;height:8px;border-radius:999px;background:var(--primary);
+    }
+
+    /* Tabs */
+    .tabsCard{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .tabsTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      padding: 12px 12px 8px;
+      border-bottom:1px solid var(--line);
+      flex-wrap: wrap;
+    }
+    .tabs{
+      display:flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .tabBtn{
+      border:1px solid var(--line);
+      background:#f8fafc;
+      color:#0f172a;
+      padding: 8px 12px;
+      border-radius: 999px;
+      cursor:pointer;
+      font-size: 13px;
+      font-weight: 700;
+      user-select:none;
+    }
+    .tabBtn.active{
+      background: rgba(37,99,235,.10);
+      border-color: rgba(37,99,235,.35);
+      color: var(--primary);
+    }
+    .rightTools{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn{
+      border:1px solid var(--line);
+      background:#fff;
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor:pointer;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .btn.primary{
+      background: var(--primary);
+      border-color: var(--primary);
+      color:#fff;
+    }
+    .btn.danger{
+      background: var(--danger);
+      border-color: var(--danger);
+      color:#fff;
+    }
+    .btn:disabled{
+      opacity:.6;
+      cursor:not-allowed;
+    }
+
+    .tabBody{
+      padding: 12px;
+    }
+
+    /* Table */
+    .tableWrap{
+      border:1px solid var(--line);
+      border-radius: 12px;
+      overflow:auto;
+      background:#fff;
+    }
+    table{
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 860px;
+      font-size: 13px;
+    }
+    th, td{
+      border-bottom:1px solid var(--line);
+      padding: 10px 10px;
+      text-align:left;
+      vertical-align:top;
+      white-space: nowrap;
+    }
+    th{
+      background:#f8fafc;
+      font-size: 12.5px;
+      color:#0f172a;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    td .muted{
+      color: var(--muted);
+      font-size: 12px;
+      white-space: normal;
+    }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      border:1px solid var(--line);
+      background:#f8fafc;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .badge.ok{
+      background: rgba(22,163,74,.10);
+      border-color: rgba(22,163,74,.30);
+      color: #166534;
+    }
+    .badge.warn{
+      background: rgba(234,179,8,.10);
+      border-color: rgba(234,179,8,.30);
+      color: #854d0e;
+    }
+    .badge.info{
+      background: rgba(37,99,235,.10);
+      border-color: rgba(37,99,235,.30);
+      color: var(--primary);
+    }
+
+    .rowTools{
+      display:flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items:center;
+      margin-bottom: 10px;
+    }
+    .search{
+      flex: 1;
+      min-width: 240px;
+      display:flex;
+      gap: 8px;
+      align-items:center;
+    }
+    input[type="text"], select{
+      width: 100%;
+      border:1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 9px 10px;
+      outline:none;
+      font-size: 13px;
+      background:#fff;
+    }
+    .miniNote{
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: normal;
+    }
+
+    /* Modal */
+    .modalOverlay{
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index: 9999;
+    }
+    .modalOverlay.show{display:flex}
+    .modal{
+      width: min(860px, 96vw);
+      background: #fff;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.25);
+      box-shadow: 0 18px 50px rgba(0,0,0,.20);
+      overflow:hidden;
+    }
+    .modalHd{
+      padding: 12px 14px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      background:#fff;
+    }
+    .modalHd .title{
+      margin:0;
+      font-weight: 900;
+      font-size: 15px;
+    }
+    .xbtn{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor:pointer;
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .modalBd{
+      padding: 12px 14px 14px;
+    }
+    .noteBox{
+      border:1px solid rgba(37,99,235,.25);
+      background: rgba(37,99,235,.06);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      color:#0f172a;
+      line-height: 1.35;
+    }
+    .noteBox.err{
+      border-color: rgba(220,38,38,.30);
+      background: rgba(220,38,38,.06);
+      color:#7f1d1d;
+    }
+    .noteBox.ok{
+      border-color: rgba(22,163,74,.30);
+      background: rgba(22,163,74,.08);
+      color:#14532d;
+    }
+    .formGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .field label{
+      display:block;
+      font-size: 12px;
+      font-weight: 800;
+      color:#0f172a;
+      margin: 0 0 6px;
+    }
+    .actionsRow{
+      display:flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+
+    /* Responsive */
+    @media (max-width: 720px){
+      .formGrid{grid-template-columns: 1fr}
+      table{min-width: 760px;}
+      .headerTop{align-items:flex-start}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <!-- PHẦN 1: THÔNG TIN KỲ HỌC -->
+    <div class="headerCard">
+      <div class="headerTop">
+        <div>
+          <h1 class="hTitle" id="semTitle">Kỳ học HK1 - Năm học 2025-2026</h1>
+          <p class="hSub" id="semSub">
+            Mã kỳ học: <b>HK1_2526</b> · Thời gian: <b>01/09/2025</b> → <b>20/12/2025</b> · Trạng thái: <b>Đang mở đăng ký</b>
+          </p>
+        </div>
+        <div class="rightTools">
+          <button class="btn" id="btnResetDemo">Reset demo</button>
+          <button class="btn primary" id="btnOpenAllocModal">Setup phân bổ</button>
+        </div>
+      </div>
+
+      <div class="pillRow">
+        <div class="pill"><span class="dot"></span> Tổng môn: <b id="pillTotalSubjects">0</b></div>
+        <div class="pill"><span class="dot" style="background:#16a34a"></span> Tổng lịch đã tạo: <b id="pillTotalAlloc">0</b></div>
+        <div class="pill"><span class="dot" style="background:#f59e0b"></span> Tổng lớp (mã lớp): <b id="pillTotalClasses">0</b></div>
+        <div class="pill"><span class="dot" style="background:#ef4444"></span> Tổng chỗ trống (khả dụng): <b id="pillTotalAvailable">0</b></div>
+      </div>
+
+      <div class="miniNote" style="margin-top:10px">
+        <b>Quy ước “Số lượng khả dụng”:</b> Tính theo <b>tổng chỗ trống của các lịch</b> thuộc môn đó.
+        Ví dụ 1 môn tạo 3 lịch → khả dụng = (cap - reg) lịch 1 + (cap - reg) lịch 2 + (cap - reg) lịch 3.
+      </div>
+    </div>
+
+    <!-- PHẦN 2: TAB -->
+    <div class="tabsCard">
+      <div class="tabsTop">
+        <div class="tabs">
+          <div class="tabBtn active" data-tab="subjects">Môn học</div>
+          <div class="tabBtn" data-tab="rooms">Phòng học</div>
+          <div class="tabBtn" data-tab="classes">Mã lớp</div>
+        </div>
+        <div class="rightTools">
+          <div class="badge info" title="Tab chỉ hiển thị 1 nội dung tại 1 thời điểm">
+            1 tab / 1 màn hình
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab content (CHỈ 1 tab hiển thị, 2 tab còn lại click mới thay thế) -->
+      <div class="tabBody" id="tabBody"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: Setup phân bổ -->
+  <div class="modalOverlay" id="allocModalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modalHd">
+        <p class="title">Setup phân bổ phòng / giảng viên / môn (tạo lịch)</p>
+        <button class="xbtn" id="btnCloseAllocModal">Đóng ✕</button>
+      </div>
+      <div class="modalBd">
+        <div class="noteBox">
+          <b>Rule:</b> Khả dụng môn = tổng (capacity - registered) của tất cả lịch thuộc môn.
+        </div>
+
+        <div class="formGrid">
+          <div class="field">
+            <label>Môn học</label>
+            <select id="allocSubject_m"></select>
+          </div>
+          <div class="field">
+            <label>Phòng học</label>
+            <select id="allocRoom_m"></select>
+          </div>
+          <div class="field">
+            <label>Giảng viên</label>
+            <select id="allocTeacher_m"></select>
+          </div>
+          <div class="field">
+            <label>Lịch học (thứ + giờ)</label>
+            <input id="allocSchedule_m" type="text" placeholder="VD: Thứ 2 18:00-20:00" />
+          </div>
+          <div class="field">
+            <label>Sức chứa (capacity)</label>
+            <input id="allocCapacity_m" type="text" placeholder="VD: 35" />
+          </div>
+          <div class="field">
+            <label>Đã đăng ký (registered)</label>
+            <input id="allocRegistered_m" type="text" placeholder="VD: 10" />
+          </div>
+        </div>
+
+        <div class="actionsRow">
+          <button class="btn" id="btnQuickFill_m">Điền nhanh</button>
+          <button class="btn primary" id="btnAllocate_m">Thêm lịch phân bổ</button>
+        </div>
+
+        <div id="allocMsg_m" class="noteBox ok" style="margin-top:12px;">
+          <b>Trạng thái:</b> Sẵn sàng phân bổ.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Xem phòng -->
+  <div class="modalOverlay" id="roomModalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modalHd">
+        <p class="title" id="roomModalTitle">Xem phòng</p>
+        <button class="xbtn" id="btnCloseRoomModal">Đóng ✕</button>
+      </div>
+      <div class="modalBd">
+        <div class="noteBox" id="roomModalInfo"></div>
+
+        <div style="margin-top:12px" class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:120px">Mã môn</th>
+                <th style="min-width:180px">Tên môn</th>
+                <th style="min-width:160px">Giảng viên</th>
+                <th style="min-width:160px">Lịch học</th>
+                <th style="min-width:110px">Capacity</th>
+                <th style="min-width:120px">Registered</th>
+                <th style="min-width:120px">Khả dụng</th>
+              </tr>
+            </thead>
+            <tbody id="roomModalTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="miniNote" style="margin-top:10px">
+          * Danh sách này là các <b>lịch đã gán</b> cho phòng.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /***********************
+     * Helpers
+     ************************/
+    const $ = (id) => document.getElementById(id);
+    const fmt = (n) => (Number.isFinite(n) ? n.toLocaleString("vi-VN") : "0");
+
+    function safeInt(v, fallback = 0){
+      const n = parseInt(String(v).trim(), 10);
+      return Number.isFinite(n) ? n : fallback;
+    }
+    function uid(prefix="A"){
+      return prefix + Math.random().toString(16).slice(2) + Date.now().toString(16);
+    }
+
+    /***********************
+     * Fake Data (State)
+     ************************/
+    const initialState = () => ({
+      semester: {
+        id: "HK1_2526",
+        name: "Kỳ học HK1 - Năm học 2025-2026",
+        start: "01/09/2025",
+        end: "20/12/2025",
+        status: "Đang mở đăng ký",
+        note: "Demo giao diện thông tin kỳ học (fake dữ liệu)."
+      },
+
+      teachers: [
+        { id: "T01", name: "Nguyễn Văn An" },
+        { id: "T02", name: "Trần Thị Bình" },
+        { id: "T03", name: "Phạm Quốc Cường" },
+        { id: "T04", name: "Lê Minh Dũng" }
+      ],
+
+      rooms: [
+        { id: "R101", code: "P.101", name: "Phòng 101 - Tòa A", capacityHint: 40 },
+        { id: "R202", code: "P.202", name: "Phòng 202 - Tòa B", capacityHint: 35 },
+        { id: "R303", code: "P.303", name: "Phòng 303 - Tòa C", capacityHint: 50 },
+      ],
+
+      // Subjects: "khả dụng" sẽ tính từ allocations (schedules)
+      subjects: [
+        { id: "S01", code: "MTH101", name: "Giải tích 1" },
+        { id: "S02", code: "PHY101", name: "Vật lý đại cương" },
+        { id: "S03", code: "CSE101", name: "Nhập môn lập trình" },
+        { id: "S04", code: "ENG101", name: "Tiếng Anh 1" },
+      ],
+
+      // Allocations (Schedules created by setup):
+      allocations: [
+        // demo có sẵn 1-2 lịch
+        {
+          id: "A001",
+          subjectId: "S03",
+          roomId: "R101",
+          teacherId: "T01",
+          schedule: "Thứ 2 18:00-20:00",
+          capacity: 35,
+          registered: 12,
+          createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2
+        },
+        {
+          id: "A002",
+          subjectId: "S03",
+          roomId: "R202",
+          teacherId: "T02",
+          schedule: "Thứ 5 07:30-09:30",
+          capacity: 30,
+          registered: 5,
+          createdAt: Date.now() - 1000 * 60 * 60 * 24 * 1
+        },
+        {
+          id: "A003",
+          subjectId: "S01",
+          roomId: "R303",
+          teacherId: "T03",
+          schedule: "Thứ 3 13:00-15:00",
+          capacity: 45,
+          registered: 40,
+          createdAt: Date.now() - 1000 * 60 * 60 * 7
+        }
+      ],
+
+      // Classes (Tab 3) - sẽ “nhảy bản ghi” khi thêm phân bổ
+      // Quy ước: mỗi allocation tạo ra 1 classCode (fake)
+      classes: [
+        { id: "C001", classCode: "L_MTH101_01", subjectId: "S01", allocationId: "A003", studentCount: 40 },
+        { id: "C002", classCode: "L_CSE101_01", subjectId: "S03", allocationId: "A001", studentCount: 12 },
+        { id: "C003", classCode: "L_CSE101_02", subjectId: "S03", allocationId: "A002", studentCount: 5 },
+      ],
+
+      ui: {
+        activeTab: "subjects",
+        subjectSearch: "",
+        roomSearch: "",
+        classSearch: ""
+      }
+    });
+
+    let state = initialState();
+
+    /***********************
+     * Derived calculations
+     ************************/
+    function findSubject(id){ return state.subjects.find(s => s.id === id) || null; }
+    function findRoom(id){ return state.rooms.find(r => r.id === id) || null; }
+    function findTeacher(id){ return state.teachers.find(t => t.id === id) || null; }
+
+    function allocAvailable(a){
+      const cap = safeInt(a.capacity, 0);
+      const reg = safeInt(a.registered, 0);
+      return Math.max(0, cap - reg);
+    }
+
+    // Số lượng khả dụng theo môn = sum available của allocations cùng subject
+    function subjectAvailable(subjectId){
+      return state.allocations
+        .filter(a => a.subjectId === subjectId)
+        .reduce((sum, a) => sum + allocAvailable(a), 0);
+    }
+
+    function subjectRegisteredTotal(subjectId){
+      return state.allocations
+        .filter(a => a.subjectId === subjectId)
+        .reduce((sum, a) => sum + safeInt(a.registered, 0), 0);
+    }
+
+    function subjectAllocCount(subjectId){
+      return state.allocations.filter(a => a.subjectId === subjectId).length;
+    }
+
+    function calcPills(){
+      const totalSubjects = state.subjects.length;
+      const totalAlloc = state.allocations.length;
+      const totalClasses = state.classes.length;
+      const totalAvail = state.allocations.reduce((s,a)=> s + allocAvailable(a), 0);
+
+      $("pillTotalSubjects").textContent = fmt(totalSubjects);
+      $("pillTotalAlloc").textContent = fmt(totalAlloc);
+      $("pillTotalClasses").textContent = fmt(totalClasses);
+      $("pillTotalAvailable").textContent = fmt(totalAvail);
+    }
+
+    /***********************
+     * Render tabs
+     ************************/
+    function render(){
+      // Header
+      $("semTitle").textContent = state.semester.name;
+      $("semSub").innerHTML =
+        `Mã kỳ học: <b>${state.semester.id}</b> · Thời gian: <b>${state.semester.start}</b> → <b>${state.semester.end}</b> · Trạng thái: <b>${state.semester.status}</b>`;
+
+      // Pills
+      calcPills();
+
+      // Tabs active style
+      document.querySelectorAll(".tabBtn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tab === state.ui.activeTab);
+      });
+
+      // Render tab body
+      if (state.ui.activeTab === "subjects") renderSubjectsTab();
+      if (state.ui.activeTab === "rooms") renderRoomsTab();
+      if (state.ui.activeTab === "classes") renderClassesTab();
+    }
+
+    function renderSubjectsTab(){
+      const q = (state.ui.subjectSearch || "").toLowerCase().trim();
+
+      const rows = state.subjects
+        .map(s => {
+          const avail = subjectAvailable(s.id);
+          const regTotal = subjectRegisteredTotal(s.id);
+          const allocCnt = subjectAllocCount(s.id);
+
+          return {
+            ...s,
+            avail,
+            regTotal,
+            allocCnt
+          };
+        })
+        .filter(r => !q || (r.code + " " + r.name).toLowerCase().includes(q))
+        .sort((a,b)=> (b.avail - a.avail) || (a.code.localeCompare(b.code)));
+
+      const html = `
+        <div class="rowTools">
+          <div class="search">
+            <input type="text" id="subjectSearch" placeholder="Tìm môn theo mã hoặc tên..." value="${escapeHtml(state.ui.subjectSearch)}" />
+          </div>
+          <div class="badge info">Tổng: ${fmt(rows.length)} môn</div>
+        </div>
+
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:120px">Mã môn</th>
+                <th style="min-width:220px">Tên môn</th>
+                <th style="min-width:130px">Số lịch</th>
+                <th style="min-width:160px">Số lượng đăng ký</th>
+                <th style="min-width:160px">Số lượng khả dụng</th>
+                <th style="min-width:220px">Ghi chú</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r=>{
+                const badge = r.avail > 20 ? "ok" : (r.avail > 0 ? "warn" : "info");
+                const badgeText = r.avail > 20 ? "Còn nhiều" : (r.avail > 0 ? "Sắp đầy" : "Chưa tạo lịch");
+                const note = r.allocCnt === 0
+                  ? "Chưa có lịch phân bổ. Bấm <b>Setup phân bổ</b> để tạo lịch."
+                  : "Khả dụng = tổng (capacity - registered) của tất cả lịch thuộc môn.";
+                return `
+                  <tr>
+                    <td><b>${r.code}</b></td>
+                    <td>
+                      <div style="white-space:normal"><b>${r.name}</b></div>
+                      <div class="muted">ID: ${r.id}</div>
+                    </td>
+                    <td>
+                      <span class="badge">${fmt(r.allocCnt)} lịch</span>
+                    </td>
+                    <td>
+                      <span class="badge">${fmt(r.regTotal)} SV</span>
+                    </td>
+                    <td>
+                      <span class="badge ${badge}">${fmt(r.avail)} chỗ</span>
+                      <div class="muted">${badgeText}</div>
+                    </td>
+                    <td class="muted" style="white-space:normal">${note}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="miniNote" style="margin-top:10px">
+          * Tab này là “tab đầu” (mặc định hiển thị). Hai tab còn lại chỉ hiển thị khi bạn bấm chuyển tab.
+        </div>
+      `;
+
+      $("tabBody").innerHTML = html;
+
+      // events
+      $("subjectSearch").addEventListener("input", (e)=>{
+        state.ui.subjectSearch = e.target.value || "";
+        renderSubjectsTab();
+      });
+    }
+
+    function renderRoomsTab(){
+      const q = (state.ui.roomSearch || "").toLowerCase().trim();
+
+      const rows = state.rooms
+        .map(r => {
+          const allocCnt = state.allocations.filter(a => a.roomId === r.id).length;
+          return { ...r, allocCnt };
+        })
+        .filter(r => !q || (r.code + " " + r.name).toLowerCase().includes(q))
+        .sort((a,b)=> (b.allocCnt - a.allocCnt) || a.code.localeCompare(b.code));
+
+      const html = `
+        <div class="rowTools">
+          <div class="search">
+            <input type="text" id="roomSearch" placeholder="Tìm phòng theo mã hoặc tên..." value="${escapeHtml(state.ui.roomSearch)}" />
+          </div>
+          <div class="badge info">Tổng: ${fmt(rows.length)} phòng</div>
+        </div>
+
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:130px">Mã phòng</th>
+                <th style="min-width:260px">Tên phòng</th>
+                <th style="min-width:150px">Gợi ý sức chứa</th>
+                <th style="min-width:150px">Số lịch đã gán</th>
+                <th style="min-width:160px">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r=>{
+                return `
+                  <tr>
+                    <td><b>${r.code}</b></td>
+                    <td>
+                      <div style="white-space:normal"><b>${r.name}</b></div>
+                      <div class="muted">ID: ${r.id}</div>
+                    </td>
+                    <td><span class="badge">${fmt(r.capacityHint)} chỗ</span></td>
+                    <td><span class="badge ${r.allocCnt ? "ok" : "info"}">${fmt(r.allocCnt)} lịch</span></td>
+                    <td>
+                      <button class="btn" data-view-room="${r.id}">Xem phòng</button>
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="miniNote" style="margin-top:10px">
+          * Bấm <b>Xem phòng</b> để mở modal hiển thị các lịch học đã gán cho phòng đó.
+        </div>
+      `;
+
+      $("tabBody").innerHTML = html;
+
+      // events
+      $("roomSearch").addEventListener("input", (e)=>{
+        state.ui.roomSearch = e.target.value || "";
+        renderRoomsTab();
+      });
+
+      document.querySelectorAll("[data-view-room]").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          openRoomModal(btn.getAttribute("data-view-room"));
+        });
+      });
+    }
+
+    function renderClassesTab(){
+      const q = (state.ui.classSearch || "").toLowerCase().trim();
+
+      const rows = state.classes
+        .map(c => {
+          const s = findSubject(c.subjectId);
+          const a = state.allocations.find(x => x.id === c.allocationId) || null;
+          const r = a ? findRoom(a.roomId) : null;
+          const t = a ? findTeacher(a.teacherId) : null;
+          return {
+            ...c,
+            subjectCode: s ? s.code : "-",
+            subjectName: s ? s.name : "-",
+            roomCode: r ? r.code : "-",
+            teacherName: t ? t.name : "-",
+            schedule: a ? a.schedule : "-"
+          };
+        })
+        .filter(r => !q || (r.classCode + " " + r.subjectCode + " " + r.subjectName).toLowerCase().includes(q))
+        .sort((a,b)=> b.studentCount - a.studentCount);
+
+      const html = `
+        <div class="rowTools">
+          <div class="search">
+            <input type="text" id="classSearch" placeholder="Tìm theo mã lớp / mã môn / tên môn..." value="${escapeHtml(state.ui.classSearch)}" />
+          </div>
+          <div class="badge info">Tổng: ${fmt(rows.length)} lớp</div>
+        </div>
+
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:160px">Mã lớp</th>
+                <th style="min-width:120px">Mã môn</th>
+                <th style="min-width:240px">Tên môn</th>
+                <th style="min-width:160px">Giảng viên</th>
+                <th style="min-width:120px">Phòng</th>
+                <th style="min-width:170px">Lịch</th>
+                <th style="min-width:160px">Số SV trong lớp</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r=>{
+                const badge = r.studentCount >= 30 ? "warn" : "ok";
+                return `
+                  <tr>
+                    <td><b>${r.classCode}</b></td>
+                    <td><b>${r.subjectCode}</b></td>
+                    <td>
+                      <div style="white-space:normal"><b>${r.subjectName}</b></div>
+                      <div class="muted">Allocation: ${r.allocationId}</div>
+                    </td>
+                    <td>${r.teacherName}</td>
+                    <td><span class="badge">${r.roomCode}</span></td>
+                    <td>${r.schedule}</td>
+                    <td><span class="badge ${badge}">${fmt(r.studentCount)} SV</span></td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="miniNote" style="margin-top:10px">
+          * Tab này sẽ <b>tự tăng bản ghi</b> khi bạn thêm lịch phân bổ ở modal Setup.
+        </div>
+      `;
+
+      $("tabBody").innerHTML = html;
+
+      // events
+      $("classSearch").addEventListener("input", (e)=>{
+        state.ui.classSearch = e.target.value || "";
+        renderClassesTab();
+      });
+    }
+
+    /***********************
+     * Tabs switching
+     ************************/
+    document.querySelectorAll(".tabBtn").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        state.ui.activeTab = btn.dataset.tab;
+        render();
+      });
+    });
+
+    /***********************
+     * Modal: Setup allocation
+     ************************/
+    function openAllocModal(){
+      // Fill selects
+      $("allocSubject_m").innerHTML = state.subjects
+        .map(s => `<option value="${s.id}">${s.code} — ${escapeHtml(s.name)}</option>`).join("");
+
+      $("allocRoom_m").innerHTML = state.rooms
+        .map(r => `<option value="${r.id}">${r.code} — ${escapeHtml(r.name)}</option>`).join("");
+
+      $("allocTeacher_m").innerHTML = state.teachers
+        .map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
+
+      // default
+      $("allocSchedule_m").value = "";
+      $("allocCapacity_m").value = "";
+      $("allocRegistered_m").value = "";
+      setAllocMsgModal("Sẵn sàng phân bổ.", "ok");
+
+      $("allocModalOverlay").classList.add("show");
+      $("allocModalOverlay").setAttribute("aria-hidden", "false");
+    }
+    function closeAllocModal(){
+      $("allocModalOverlay").classList.remove("show");
+      $("allocModalOverlay").setAttribute("aria-hidden", "true");
+    }
+    function setAllocMsgModal(msg, type="ok"){
+      const el = $("allocMsg_m");
+      el.className = "noteBox " + (type === "err" ? "err" : "ok");
+      el.innerHTML = `<b>Trạng thái:</b> ${msg}`;
+    }
+
+    $("btnOpenAllocModal").addEventListener("click", openAllocModal);
+    $("btnCloseAllocModal").addEventListener("click", closeAllocModal);
+    $("allocModalOverlay").addEventListener("click", (e)=>{
+      if (e.target === $("allocModalOverlay")) closeAllocModal();
+    });
+
+    $("btnQuickFill_m").addEventListener("click", ()=>{
+      const samples = ["Thứ 2 18:00-20:00", "Thứ 3 07:30-09:30", "Thứ 5 13:00-15:00", "Thứ 7 09:00-11:00"];
+      $("allocSchedule_m").value = samples[Math.floor(Math.random() * samples.length)];
+
+      const roomId = $("allocRoom_m").value;
+      const room = findRoom(roomId);
+      const hint = room ? room.capacityHint : 35;
+      $("allocCapacity_m").value = String(hint);
+      $("allocRegistered_m").value = String(Math.floor(hint * 0.25));
+      setAllocMsgModal("Đã điền nhanh dữ liệu.", "ok");
+    });
+
+    // Core: add allocation
+    function addAllocation({subjectId, roomId, teacherId, schedule, capacity, registered}){
+      const cap = safeInt(capacity, NaN);
+      const reg = safeInt(registered, NaN);
+
+      if (!subjectId || !roomId || !teacherId){
+        return { ok:false, msg:"Thiếu thông tin chọn môn/phòng/giảng viên." };
+      }
+      if (!schedule || !String(schedule).trim()){
+        return { ok:false, msg:"Vui lòng nhập lịch học (VD: Thứ 2 18:00-20:00)." };
+      }
+      if (!Number.isFinite(cap) || cap <= 0){
+        return { ok:false, msg:"Capacity phải là số > 0." };
+      }
+      if (!Number.isFinite(reg) || reg < 0){
+        return { ok:false, msg:"Registered phải là số >= 0." };
+      }
+      if (reg > cap){
+        return { ok:false, msg:"Registered không được lớn hơn capacity." };
+      }
+
+      // tạo allocation
+      const allocId = uid("A");
+      state.allocations.push({
+        id: allocId,
+        subjectId,
+        roomId,
+        teacherId,
+        schedule: String(schedule).trim(),
+        capacity: cap,
+        registered: reg,
+        createdAt: Date.now()
+      });
+
+      // tạo class record (tab 3 nhảy bản ghi)
+      const s = findSubject(subjectId);
+      const codeBase = s ? s.code : "SUB";
+      const idx = state.classes.filter(c => c.subjectId === subjectId).length + 1;
+      const classCode = `L_${codeBase}_${String(idx).padStart(2,"0")}`;
+
+      state.classes.unshift({
+        id: uid("C"),
+        classCode,
+        subjectId,
+        allocationId: allocId,
+        studentCount: reg
+      });
+
+      return { ok:true, msg:`Đã thêm lịch phân bổ. Khả dụng môn sẽ tự cập nhật theo lịch.` };
+    }
+
+    $("btnAllocate_m").addEventListener("click", ()=>{
+      const payload = {
+        subjectId: $("allocSubject_m").value,
+        roomId: $("allocRoom_m").value,
+        teacherId: $("allocTeacher_m").value,
+        schedule: $("allocSchedule_m").value,
+        capacity: $("allocCapacity_m").value,
+        registered: $("allocRegistered_m").value
+      };
+
+      const res = addAllocation(payload);
+      if (!res.ok){
+        setAllocMsgModal(res.msg, "err");
+        return;
+      }
+
+      setAllocMsgModal(res.msg, "ok");
+
+      // cập nhật UI: tab 1 + pills + (nếu user đang ở tab 3 sẽ thấy record mới)
+      render();
+
+      // giữ modal mở để thêm tiếp (đúng kiểu setup nhiều lịch)
+      $("allocSchedule_m").value = "";
+      $("allocCapacity_m").value = "";
+      $("allocRegistered_m").value = "";
+    });
+
+    window.addEventListener("keydown", (e)=>{
+      if (e.key === "Escape"){
+        closeAllocModal();
+        closeRoomModal();
+      }
+    });
+
+    /***********************
+     * Modal: Room view
+     ************************/
+    function openRoomModal(roomId){
+      const room = findRoom(roomId);
+      if (!room) return;
+
+      $("roomModalTitle").textContent = `Phòng: ${room.code} — ${room.name}`;
+      $("roomModalInfo").innerHTML =
+        `<b>Gợi ý sức chứa:</b> ${fmt(room.capacityHint)} chỗ · <b>Số lịch đã gán:</b> ${fmt(state.allocations.filter(a=>a.roomId===roomId).length)} lịch`;
+
+      const list = state.allocations
+        .filter(a => a.roomId === roomId)
+        .map(a=>{
+          const s = findSubject(a.subjectId);
+          const t = findTeacher(a.teacherId);
+          return {
+            subjectCode: s ? s.code : "-",
+            subjectName: s ? s.name : "-",
+            teacherName: t ? t.name : "-",
+            schedule: a.schedule,
+            capacity: safeInt(a.capacity,0),
+            registered: safeInt(a.registered,0),
+            available: allocAvailable(a)
+          };
+        })
+        .sort((a,b)=> b.available - a.available);
+
+      $("roomModalTbody").innerHTML = list.length
+        ? list.map(r=>`
+            <tr>
+              <td><b>${r.subjectCode}</b></td>
+              <td style="white-space:normal"><b>${escapeHtml(r.subjectName)}</b></td>
+              <td>${escapeHtml(r.teacherName)}</td>
+              <td>${escapeHtml(r.schedule)}</td>
+              <td><span class="badge">${fmt(r.capacity)}</span></td>
+              <td><span class="badge">${fmt(r.registered)}</span></td>
+              <td><span class="badge ${r.available ? "ok" : "warn"}">${fmt(r.available)}</span></td>
+            </tr>
+          `).join("")
+        : `<tr><td colspan="7" class="muted" style="white-space:normal">Chưa có lịch nào gán cho phòng này. Hãy bấm <b>Setup phân bổ</b> để tạo lịch.</td></tr>`;
+
+      $("roomModalOverlay").classList.add("show");
+      $("roomModalOverlay").setAttribute("aria-hidden", "false");
+    }
+
+    function closeRoomModal(){
+      $("roomModalOverlay").classList.remove("show");
+      $("roomModalOverlay").setAttribute("aria-hidden", "true");
+    }
+
+    $("btnCloseRoomModal").addEventListener("click", closeRoomModal);
+    $("roomModalOverlay").addEventListener("click", (e)=>{
+      if (e.target === $("roomModalOverlay")) closeRoomModal();
+    });
+
+    /***********************
+     * Reset demo
+     ************************/
+    $("btnResetDemo").addEventListener("click", ()=>{
+      state = initialState();
+      // luôn về tab 1
+      state.ui.activeTab = "subjects";
+      render();
+    });
+
+    /***********************
+     * XSS-safe helper for demo
+     ************************/
+    function escapeHtml(str){
+      return String(str ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    /***********************
+     * Init
+     ************************/
+    render();
+  </script>
+</body>
+</html>

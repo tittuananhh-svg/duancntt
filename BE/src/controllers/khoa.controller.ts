@@ -1,4 +1,3 @@
-// src/controllers/khoa.controller.ts
 import { Request, Response } from 'express';
 import {
   createKhoa,
