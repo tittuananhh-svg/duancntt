@@ -68,16 +68,24 @@ export async function createSinhVienHandler(req: Request, res: Response) {
       lop_nien_che: lop_nien_che ?? null,
       khoa_hoc: khoa_hoc ? Number(khoa_hoc) : null,
       gioi_tinh_id: gioi_tinh_id ? Number(gioi_tinh_id) : null,
-      ngay_sinh: ngay_sinh || null, // 'YYYY-MM-DD'
-      user: user ?? null,
+      ngay_sinh: ngay_sinh || null,
+
     });
 
-    res.status(201).json({ success: true, data: sv });
-  } catch (err) {
+    return res.status(201).json({ success: true, data: sv });
+  } catch (err: any) {
+    if (err?.message === 'EMAIL_EXISTS') {
+      return res.status(409).json({ success: false, message: 'Email đã tồn tại trong hệ thống' });
+    }
+    if (err?.message === 'USERNAME_EXISTS') {
+      return res.status(409).json({ success: false, message: 'Mã sinh viên đã tồn tại trong hệ thống' });
+    }
+
     console.error(err);
-    res.status(500).json({ success: false, message: 'Lỗi server' });
+    return res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 }
+
 
 // PUT /sinh-vien/:id       → cập nhật
 export async function updateSinhVienHandler(req: Request, res: Response) {

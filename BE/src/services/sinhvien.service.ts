@@ -105,6 +105,21 @@ export async function getSinhVienById(id: number): Promise<SinhVien | null> {
   return list[0] || null;
 }
 
+function isMysqlDup(err: any) {
+  return err?.code === 'ER_DUP_ENTRY' || err?.errno === 1062;
+}
+
+function getDupFieldFromMsg(sqlMessage?: string) {
+  // ví dụ: "Duplicate entry 'abc@gmail.com' for key 'email'"
+  // hoặc:  "... for key 'users.email'" tuỳ MySQL
+  const m = sqlMessage?.match(/for key '([^']+)'/);
+  const key = m?.[1] || '';
+  // key có thể là email / username / users.email / uniq_users_email ...
+  if (key.includes('email')) return 'email';
+  if (key.includes('username')) return 'username';
+  return 'unknown';
+}
+
 export async function createSinhVien(payload: {
   ma_sv: string;
   ho_ten: string;
@@ -134,19 +149,45 @@ export async function createSinhVien(payload: {
     } = payload;
 
     if (!email) {
-      throw new Error(
-        'Email sinh viên không được để trống (cần để gửi thông tin tài khoản)',
-      );
+      const e: any = new Error('EMAIL_REQUIRED');
+      throw e;
     }
 
-    /* ======================
-       1️⃣ INSERT SINH_VIEN (user = NULL)
-       ====================== */
+    // (khuyến nghị) check sớm ở mức app để message chuẩn + tránh rollback tốn
+    const [checkUser] = await conn.query<any[]>(
+      `SELECT id, username, email FROM users WHERE username = ? OR email = ? LIMIT 1`,
+      [ma_sv, email],
+    );
+    if (Array.isArray(checkUser) && checkUser.length > 0) {
+      const existed = checkUser[0];
+      if (existed.username === ma_sv) throw new Error('USERNAME_EXISTS');
+      if (existed.email === email) throw new Error('EMAIL_EXISTS');
+      throw new Error('USER_EXISTS');
+    }
+
+    // ====== INSERT SINH_VIEN / USERS theo flow bạn đang dùng ======
+    // Lưu ý: đoạn này tuỳ bạn đang theo hướng nào (placeholder hay nullable)
+    // Ở đây minh hoạ insert USERS trước với user_ref_id NULL (nếu đã cho NULL)
+    const plainPassword = generatePassword(10);
+    const passwordHash = await bcrypt.hash(plainPassword, 10);
+    const USER_TYPE_ID_STUDENT = 1;
+
+    const [userResult] = await conn.query<ResultSetHeader>(
+      `INSERT INTO users
+        (username, password_hash, email, role_id, user_type_id, user_ref_id,
+         trang_thai_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, NULL, 1, NOW(), NOW())`,
+      [ma_sv, passwordHash, email, 3, USER_TYPE_ID_STUDENT],
+    );
+
+    const userId = userResult.insertId;
+    if (!userId) throw new Error('INSERT_USERS_FAILED');
+
     const [svResult] = await conn.query<ResultSetHeader>(
       `INSERT INTO sinh_vien 
         (ma_sv, ho_ten, email, sdt, khoa_id, lop_nien_che, khoa_hoc, gioi_tinh_id, ngay_sinh,
          trang_thai_id, created_at, updated_at, \`user\`)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW(), NULL)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW(), ?)`,
       [
         ma_sv,
         ho_ten,
@@ -157,76 +198,53 @@ export async function createSinhVien(payload: {
         khoa_hoc,
         gioi_tinh_id,
         ngay_sinh,
+        userId,
       ],
     );
 
     const sinhVienId = svResult.insertId;
-    if (!sinhVienId) {
-      throw new Error('Insert sinh_vien failed');
-    }
+    if (!sinhVienId) throw new Error('INSERT_SINHVIEN_FAILED');
 
-    /* ======================
-       2️⃣ INSERT USER
-       ====================== */
-    const plainPassword = generatePassword(10);
-    const passwordHash = await bcrypt.hash(plainPassword, 10);
-
-    const USER_TYPE_ID_STUDENT = 1; // đổi nếu hệ bạn khác
-
-    const [userResult] = await conn.query<ResultSetHeader>(
-      `INSERT INTO users
-        (username, password_hash, email, role_id, user_type_id, user_ref_id,
-         trang_thai_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 1, NOW(), NOW())`,
-      [
-        ma_sv,
-        passwordHash,
-        email,
-        3, // role_id sinh viên
-        USER_TYPE_ID_STUDENT,
-        sinhVienId,
-      ],
-    );
-
-    const userId = userResult.insertId;
-    if (!userId) {
-      throw new Error('Insert users failed');
-    }
-
-    /* ======================
-       3️⃣ UPDATE SINH_VIEN.user = userId
-       ====================== */
-    await conn.query(
-      `UPDATE sinh_vien
-       SET \`user\` = ?
-       WHERE id = ?`,
-      [userId, sinhVienId],
-    );
+    await conn.query(`UPDATE users SET user_ref_id = ? WHERE id = ?`, [
+      sinhVienId,
+      userId,
+    ]);
 
     await conn.commit();
 
-    /* ======================
-       4️⃣ GỬI EMAIL
-       ====================== */
-    await sendStudentWelcomeEmail({
-      to: email,
-      username: ma_sv,
-      password: plainPassword,
-    });
-
-    const newRecord = await getSinhVienById(sinhVienId);
-    if (!newRecord) {
-      throw new Error('Create sinh_vien succeeded but fetch failed');
+    // gửi mail sau commit
+    try {
+      await sendStudentWelcomeEmail({
+        to: email,
+        username: ma_sv,
+        password: plainPassword,
+      });
+    } catch (e) {
+      console.error('Send email failed:', e);
     }
 
+    const newRecord = await getSinhVienById(sinhVienId);
+    if (!newRecord) throw new Error('FETCH_AFTER_CREATE_FAILED');
+
     return newRecord;
-  } catch (err) {
+  } catch (err: any) {
     await conn.rollback();
+
+    // map lỗi DB duplicate thành lỗi nghiệp vụ
+    if (isMysqlDup(err)) {
+      const field = getDupFieldFromMsg(err?.sqlMessage);
+      if (field === 'email') throw new Error('EMAIL_EXISTS');
+      if (field === 'username') throw new Error('USERNAME_EXISTS');
+      throw new Error('DUPLICATE_ENTRY');
+    }
+
     throw err;
   } finally {
     conn.release();
   }
 }
+
+
 
 
 export async function updateSinhVien(
