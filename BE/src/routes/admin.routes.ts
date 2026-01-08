@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router } from "express";
 
 import {
   createKhoaHandler,
@@ -6,7 +6,7 @@ import {
   getListKhoa,
   getOneKhoa,
   updateKhoaHandler,
-} from '../controllers/khoa.controller';
+} from "../controllers/khoa.controller";
 
 import {
   createMonHocHandler,
@@ -14,7 +14,7 @@ import {
   getListMonHoc,
   getOneMonHoc,
   updateMonHocHandler,
-} from '../controllers/monhoc.controllers';
+} from "../controllers/monhoc.controllers";
 
 import {
   createGiangVienHandler,
@@ -22,7 +22,7 @@ import {
   getListGiangVien,
   getOneGiangVien,
   updateGiangVienHandler,
-} from '../controllers/giangvien.controller';
+} from "../controllers/giangvien.controller";
 
 import {
   createSinhVienHandler,
@@ -30,7 +30,7 @@ import {
   getListSinhVien,
   getOneSinhVien,
   updateSinhVienHandler,
-} from '../controllers/sinhvien.controllers';
+} from "../controllers/sinhvien.controllers";
 
 import {
   createHocKyHandler,
@@ -38,7 +38,7 @@ import {
   getListHocKy,
   getOneHocKy,
   updateHocKyHandler,
-} from '../controllers/hocky.controller';
+} from "../controllers/hocky.controller";
 
 import {
   createPhanBoLopHocPhanHandler,
@@ -48,91 +48,106 @@ import {
   getMonHocTheoKyHandler,
   getPhongTheoKyHandler,
   updateLopHocPhanPartialHandler,
-} from '../controllers/lophocphan.controller';
+} from "../controllers/lophocphan.controller";
+import {
+  allocateStudentsToMonHoc,
+  getSinhVienByKyHoc,
+  getSinhVienDaDangKyByMaLopHP,
+} from "../controllers/phanbo.controller";
+
+import {
+  listKeHoachThiController,
+  createKeHoachThiController,
+  updateKeHoachThiController,
+} from "../controllers/kehoachthi.controller";
 
 const router = Router();
 
 /* ================== KHOA ================== */
 // GET /khoa?q=keyword  → danh sách + search theo ma_khoa, ten_khoa
-router.get('/khoa', getListKhoa);
+router.get("/khoa", getListKhoa);
 
 // GET /khoa/:id        → chi tiết 1 khoa
-router.get('/khoa/:id', getOneKhoa);
+router.get("/khoa/:id", getOneKhoa);
 
 // POST /khoa           → thêm mới khoa
-router.post('/khoa', createKhoaHandler);
+router.post("/khoa", createKhoaHandler);
 
 // PUT /khoa/:id        → cập nhật khoa
-router.put('/khoa/:id', updateKhoaHandler);
+router.put("/khoa/:id", updateKhoaHandler);
 
 // DELETE /khoa/:id     → xóa khoa (tuỳ bạn là delete thật hay soft delete)
-router.delete('/khoa/:id', deleteKhoaHandler);
-
+router.delete("/khoa/:id", deleteKhoaHandler);
 
 /* ================== MÔN HỌC ================== */
 // GET /mon-hoc?q=keyword  → danh sách + search theo ma_mon, ten_mon
-router.get('/mon-hoc', getListMonHoc);
+router.get("/mon-hoc", getListMonHoc);
 
 // GET /mon-hoc/:id        → chi tiết 1 môn học
-router.get('/mon-hoc/:id', getOneMonHoc);
+router.get("/mon-hoc/:id", getOneMonHoc);
 
 // POST /mon-hoc           → thêm mới môn học
-router.post('/mon-hoc', createMonHocHandler);
+router.post("/mon-hoc", createMonHocHandler);
 
 // PUT /mon-hoc/:id        → cập nhật môn học
-router.put('/mon-hoc/:id', updateMonHocHandler);
+router.put("/mon-hoc/:id", updateMonHocHandler);
 
 // DELETE /mon-hoc/:id     → soft delete (chỉ update trang_thai = 2)
-router.delete('/mon-hoc/:id', deleteMonHocHandler);
-
+router.delete("/mon-hoc/:id", deleteMonHocHandler);
 
 // GET /giang-vien?q=keyword   → danh sách + search
-router.get('/giang-vien', getListGiangVien);
+router.get("/giang-vien", getListGiangVien);
 
 // GET /giang-vien/:id         → chi tiết 1 giảng viên
-router.get('/giang-vien/:id', getOneGiangVien);
+router.get("/giang-vien/:id", getOneGiangVien);
 
 // POST /giang-vien            → thêm mới
-router.post('/giang-vien', createGiangVienHandler);
+router.post("/giang-vien", createGiangVienHandler);
 
 // PUT /giang-vien/:id         → cập nhật
-router.put('/giang-vien/:id', updateGiangVienHandler);
+router.put("/giang-vien/:id", updateGiangVienHandler);
 
 // DELETE /giang-vien/:id      → xóa
-router.delete('/giang-vien/:id', deleteGiangVienHandler);
+router.delete("/giang-vien/:id", deleteGiangVienHandler);
 
-router.get('/sinh-vien', getListSinhVien);
-router.get('/sinh-vien/:id', getOneSinhVien);
-router.post('/sinh-vien', createSinhVienHandler);
-router.put('/sinh-vien/:id', updateSinhVienHandler);
-router.delete('/sinh-vien/:id', deleteSinhVienHandler);
+router.get("/sinh-vien", getListSinhVien);
+router.get("/sinh-vien/:id", getOneSinhVien);
+router.post("/sinh-vien", createSinhVienHandler);
+router.put("/sinh-vien/:id", updateSinhVienHandler);
+router.delete("/sinh-vien/:id", deleteSinhVienHandler);
 
 // ===== HỌC KỲ =====
-router.get('/hoc-ky', getListHocKy);
-router.get('/hoc-ky/:id', getOneHocKy);
-router.post('/hoc-ky', createHocKyHandler);
-router.put('/hoc-ky/:id', updateHocKyHandler);
-router.delete('/hoc-ky/:id', deleteHocKyHandler);
+router.get("/hoc-ky", getListHocKy);
+router.get("/hoc-ky/:id", getOneHocKy);
+router.post("/hoc-ky", createHocKyHandler);
+router.put("/hoc-ky/:id", updateHocKyHandler);
+router.delete("/hoc-ky/:id", deleteHocKyHandler);
 
 // ===== LỚP HỌC PHẦN =====
 
 // Thêm mới phân bổ
-router.post('/lop-hoc-phan/phan-bo', createPhanBoLopHocPhanHandler);
+router.post("/lop-hoc-phan/phan-bo", createPhanBoLopHocPhanHandler);
 
 // 3 API báo cáo theo kỳ (ĐẶT TRƯỚC /:ma_lop_hp)
-router.get('/lop-hoc-phan/mon-hoc-theo-ky/:ky_hoc_id', getMonHocTheoKyHandler);
-router.get('/lop-hoc-phan/phong-theo-ky/:ky_hoc_id', getPhongTheoKyHandler);
-router.get('/lop-hoc-phan/danh-sach-theo-ky/:ky_hoc_id', getDanhSachLopTheoKyHandler);
+router.get("/lop-hoc-phan/mon-hoc-theo-ky/:ky_hoc_id", getMonHocTheoKyHandler);
+router.get("/lop-hoc-phan/phong-theo-ky/:ky_hoc_id", getPhongTheoKyHandler);
+router.get(
+  "/lop-hoc-phan/danh-sach-theo-ky/:ky_hoc_id",
+  getDanhSachLopTheoKyHandler
+);
 
 // Thông tin theo mã lớp HP
-router.get('/lop-hoc-phan/:ma_lop_hp', getLopHocPhanDetailHandler);
+router.get("/lop-hoc-phan/:ma_lop_hp", getLopHocPhanDetailHandler);
 
 // Update partial (chỉ field truyền lên)
-router.put('/lop-hoc-phan/:ma_lop_hp', updateLopHocPhanPartialHandler);
+router.put("/lop-hoc-phan/:ma_lop_hp", updateLopHocPhanPartialHandler);
 
-// Xóa
+router.post("/phan-bo-sinh-vien-mon-hoc", allocateStudentsToMonHoc);
+router.post("/sinh-vien-theo-ky-hoc", getSinhVienByKyHoc);
+router.post("/sinh-vien-theo-ma-lop-hp", getSinhVienDaDangKyByMaLopHP);
 
-
-
+router.post("/ke-hoach-thi/list", listKeHoachThiController);
+router.post("/ke-hoach-thi/create", createKeHoachThiController);
+router.put("/ke-hoach-thi/update", updateKeHoachThiController);
 
 export default router;

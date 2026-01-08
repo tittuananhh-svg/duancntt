@@ -46,7 +46,6 @@ export async function createSinhVienHandler(req: Request, res: Response) {
       sdt,
       khoa_id,
       lop_nien_che,
-      khoa_hoc,
       gioi_tinh_id,
       ngay_sinh,
       user,
@@ -66,7 +65,6 @@ export async function createSinhVienHandler(req: Request, res: Response) {
       sdt: sdt ?? null,
       khoa_id: khoa_id ? Number(khoa_id) : null,
       lop_nien_che: lop_nien_che ?? null,
-      khoa_hoc: khoa_hoc ? Number(khoa_hoc) : null,
       gioi_tinh_id: gioi_tinh_id ? Number(gioi_tinh_id) : null,
       ngay_sinh: ngay_sinh || null,
 
@@ -105,7 +103,6 @@ export async function updateSinhVienHandler(req: Request, res: Response) {
       sdt,
       khoa_id,
       lop_nien_che,
-      khoa_hoc,
       gioi_tinh_id,
       ngay_sinh,
       trang_thai_id,
@@ -125,10 +122,6 @@ export async function updateSinhVienHandler(req: Request, res: Response) {
         lop_nien_che !== undefined
           ? lop_nien_che
           : existed.lop_nien_che ?? null,
-      khoa_hoc:
-        khoa_hoc !== undefined
-          ? (khoa_hoc ? Number(khoa_hoc) : null)
-          : existed.khoa_hoc ?? null,
       gioi_tinh_id:
         gioi_tinh_id !== undefined
           ? (gioi_tinh_id ? Number(gioi_tinh_id) : null)

@@ -44,6 +44,8 @@ export async function createMonHoc(payload: {
   so_tin_chi: number;
   so_tiet_ly_thuyet?: number | null;
   so_tiet_thuc_hanh?: number | null;
+  bat_buoc?: number | 1;
+  cap_do_uu_tien?: number | 1;
 }): Promise<MonHoc> {
   const {
     ma_mon,
@@ -51,13 +53,15 @@ export async function createMonHoc(payload: {
     so_tin_chi,
     so_tiet_ly_thuyet = null,
     so_tiet_thuc_hanh = null,
+    bat_buoc,
+    cap_do_uu_tien
   } = payload;
 
   const [result] = await pool.query<ResultSetHeader>(
     `INSERT INTO mon_hoc 
-      (ma_mon, ten_mon, so_tin_chi, so_tiet_ly_thuyet, so_tiet_thuc_hanh, trang_thai, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, 1, NOW(), NOW())`,
-    [ma_mon, ten_mon, so_tin_chi, so_tiet_ly_thuyet, so_tiet_thuc_hanh],
+      (ma_mon, ten_mon, so_tin_chi, so_tiet_ly_thuyet, so_tiet_thuc_hanh, trang_thai, created_at, updated_at, bat_buoc, cap_do_uu_tien)
+     VALUES (?, ?, ?, ?, ?, 1, NOW(), NOW(), ?, ?)`,
+    [ma_mon, ten_mon, so_tin_chi, so_tiet_ly_thuyet, so_tiet_thuc_hanh, bat_buoc, cap_do_uu_tien],
   );
 
   const insertId = result.insertId;

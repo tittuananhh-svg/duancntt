@@ -1,22 +1,22 @@
 // src/controllers/monhoc.controllers.ts
-import { Request, Response } from 'express';
+import { Request, Response } from "express";
 import {
   createMonHoc,
   deleteMonHoc,
   getMonHocById,
   searchMonHoc,
   updateMonHoc,
-} from '../services/monhoc.service';
+} from "../services/monhoc.service";
 
 // GET /mon-hoc?q=keyword  → danh sách + search theo ma_mon, ten_mon
 export async function getListMonHoc(req: Request, res: Response) {
   try {
-    const q = (req.query.q as string) || '';
+    const q = (req.query.q as string) || "";
     const data = await searchMonHoc(q);
     res.json({ success: true, data });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: 'Lỗi server' });
+    res.status(500).json({ success: false, message: "Lỗi server" });
   }
 }
 
@@ -28,12 +28,12 @@ export async function getOneMonHoc(req: Request, res: Response) {
     if (!monHoc) {
       return res
         .status(404)
-        .json({ success: false, message: 'Không tìm thấy môn học' });
+        .json({ success: false, message: "Không tìm thấy môn học" });
     }
     res.json({ success: true, data: monHoc });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: 'Lỗi server' });
+    res.status(500).json({ success: false, message: "Lỗi server" });
   }
 }
 
@@ -46,13 +46,15 @@ export async function createMonHocHandler(req: Request, res: Response) {
       so_tin_chi,
       so_tiet_ly_thuyet,
       so_tiet_thuc_hanh,
+      bat_buoc,
+      cap_do_uu_tien,
     } = req.body;
 
     // validate
     if (!ma_mon || !ten_mon || !so_tin_chi) {
       return res.status(400).json({
         success: false,
-        message: 'ma_mon, ten_mon và so_tin_chi là bắt buộc',
+        message: "ma_mon, ten_mon và so_tin_chi là bắt buộc",
       });
     }
 
@@ -60,18 +62,16 @@ export async function createMonHocHandler(req: Request, res: Response) {
       ma_mon,
       ten_mon,
       so_tin_chi: Number(so_tin_chi),
-      so_tiet_ly_thuyet: so_tiet_ly_thuyet
-        ? Number(so_tiet_ly_thuyet)
-        : null,
-      so_tiet_thuc_hanh: so_tiet_thuc_hanh
-        ? Number(so_tiet_thuc_hanh)
-        : null,
+      so_tiet_ly_thuyet: so_tiet_ly_thuyet ? Number(so_tiet_ly_thuyet) : null,
+      so_tiet_thuc_hanh: so_tiet_thuc_hanh ? Number(so_tiet_thuc_hanh) : null,
+      bat_buoc: bat_buoc ? Number(bat_buoc) : 1,
+      cap_do_uu_tien: cap_do_uu_tien ? Number(cap_do_uu_tien) : 1,
     });
 
     res.status(201).json({ success: true, data: monHoc });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: 'Lỗi server' });
+    res.status(500).json({ success: false, message: "Lỗi server" });
   }
 }
 
@@ -92,16 +92,14 @@ export async function updateMonHocHandler(req: Request, res: Response) {
     if (!existed) {
       return res
         .status(404)
-        .json({ success: false, message: 'Không tìm thấy môn học' });
+        .json({ success: false, message: "Không tìm thấy môn học" });
     }
 
     const monHoc = await updateMonHoc(id, {
       ma_mon: ma_mon ?? existed.ma_mon,
       ten_mon: ten_mon ?? existed.ten_mon,
       so_tin_chi:
-        so_tin_chi !== undefined
-          ? Number(so_tin_chi)
-          : existed.so_tin_chi,
+        so_tin_chi !== undefined ? Number(so_tin_chi) : existed.so_tin_chi,
       so_tiet_ly_thuyet:
         so_tiet_ly_thuyet !== undefined
           ? Number(so_tiet_ly_thuyet)
@@ -117,7 +115,7 @@ export async function updateMonHocHandler(req: Request, res: Response) {
     res.json({ success: true, data: monHoc });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: 'Lỗi server' });
+    res.status(500).json({ success: false, message: "Lỗi server" });
   }
 }
 
@@ -129,14 +127,14 @@ export async function deleteMonHocHandler(req: Request, res: Response) {
     if (!ok) {
       return res
         .status(404)
-        .json({ success: false, message: 'Không tìm thấy môn học' });
+        .json({ success: false, message: "Không tìm thấy môn học" });
     }
     res.json({
       success: true,
-      message: 'Đã cập nhật trạng thái môn học thành đóng',
+      message: "Đã cập nhật trạng thái môn học thành đóng",
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: 'Lỗi server' });
+    res.status(500).json({ success: false, message: "Lỗi server" });
   }
 }

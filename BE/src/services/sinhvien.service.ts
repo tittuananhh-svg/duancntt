@@ -12,7 +12,6 @@ export interface SinhVien {
   sdt?: string | null;
   khoa_id?: number | null;
   lop_nien_che?: string | null;
-  khoa_hoc?: number | null;
   gioi_tinh_id?: number | null;
   ngay_sinh?: string | Date | null;
   trang_thai_id?: number;
@@ -127,7 +126,6 @@ export async function createSinhVien(payload: {
   sdt?: string | null;
   khoa_id?: number | null;
   lop_nien_che?: string | null;
-  khoa_hoc?: number | null;
   gioi_tinh_id?: number | null;
   ngay_sinh?: string | null;
 }): Promise<SinhVien> {
@@ -143,7 +141,6 @@ export async function createSinhVien(payload: {
       sdt = null,
       khoa_id = null,
       lop_nien_che = null,
-      khoa_hoc = null,
       gioi_tinh_id = null,
       ngay_sinh = null,
     } = payload;
@@ -185,9 +182,9 @@ export async function createSinhVien(payload: {
 
     const [svResult] = await conn.query<ResultSetHeader>(
       `INSERT INTO sinh_vien 
-        (ma_sv, ho_ten, email, sdt, khoa_id, lop_nien_che, khoa_hoc, gioi_tinh_id, ngay_sinh,
+        (ma_sv, ho_ten, email, sdt, khoa_id, lop_nien_che, gioi_tinh_id, ngay_sinh,
          trang_thai_id, created_at, updated_at, \`user\`)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW(), ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW(), ?)`,
       [
         ma_sv,
         ho_ten,
@@ -195,7 +192,6 @@ export async function createSinhVien(payload: {
         sdt,
         khoa_id,
         lop_nien_che,
-        khoa_hoc,
         gioi_tinh_id,
         ngay_sinh,
         userId,
@@ -256,7 +252,6 @@ export async function updateSinhVien(
     sdt?: string | null;
     khoa_id?: number | null;
     lop_nien_che?: string | null;
-    khoa_hoc?: number | null;
     gioi_tinh_id?: number | null;
     ngay_sinh?: string | null;
     trang_thai_id?: number | null;
@@ -270,7 +265,6 @@ export async function updateSinhVien(
     sdt = null,
     khoa_id = null,
     lop_nien_che = null,
-    khoa_hoc = null,
     gioi_tinh_id = null,
     ngay_sinh = null,
     trang_thai_id = 1,
@@ -285,7 +279,6 @@ export async function updateSinhVien(
         sdt = ?,
         khoa_id = ?,
         lop_nien_che = ?,
-        khoa_hoc = ?,
         gioi_tinh_id = ?,
         ngay_sinh = ?,
         trang_thai_id = ?,
@@ -299,7 +292,6 @@ export async function updateSinhVien(
       sdt,
       khoa_id,
       lop_nien_che,
-      khoa_hoc,
       gioi_tinh_id,
       ngay_sinh,
       trang_thai_id,
