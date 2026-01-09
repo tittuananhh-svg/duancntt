@@ -1,11 +1,11 @@
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
-import { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
-import { ENV } from '../config/env';
-import { log } from 'console';
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import { RowDataPacket, ResultSetHeader } from "mysql2/promise";
+import { ENV } from "../config/env";
+import { log } from "console";
 
-import { pool } from '../config/database';
+import { pool } from "../config/database";
 
 // login
 interface DbUser extends RowDataPacket {
@@ -55,10 +55,10 @@ export async function loginService(
   const user = rows[0];
 
   // 2. So sánh mật khẩu
-  console.log(password)
-  console.log(user.password_hash)
+  console.log(password);
+  console.log(user.password_hash);
   const ok = await bcrypt.compare(password, user.password_hash.trim());
-  console.log(ok)
+  console.log(ok);
   if (!ok) {
     return null;
   }
@@ -69,24 +69,22 @@ export async function loginService(
       userId: user.id,
       roleId: user.role_id,
       userTypeId: user.user_type_id,
-      userRefId: user.user_ref_id
+      userRefId: user.user_ref_id,
     },
     ENV.JWT_ACCESS_SECRET,
-    { expiresIn: '2h' }
+    { expiresIn: "2h" }
   );
 
   // 4. Tạo refresh token (7 ngày)
-  const refreshToken = jwt.sign(
-    { userId: user.id },
-    ENV.JWT_REFRESH_SECRET,
-    { expiresIn: '7d' }
-  );
+  const refreshToken = jwt.sign({ userId: user.id }, ENV.JWT_REFRESH_SECRET, {
+    expiresIn: "7d",
+  });
 
   // 5. Hash refresh token để lưu DB (CHAR(64))
   const refreshTokenHash = crypto
-    .createHash('sha256')
+    .createHash("sha256")
     .update(refreshToken)
-    .digest('hex');
+    .digest("hex");
 
   // 6. Thời gian hết hạn
   const expiresAt = new Date();
@@ -100,13 +98,7 @@ export async function loginService(
     VALUES
       (?, ?, ?, ?, ?)
     `,
-    [
-      user.id,
-      refreshTokenHash,
-      userAgent || null,
-      ipAddress || null,
-      expiresAt
-    ]
+    [user.id, refreshTokenHash, userAgent || null, ipAddress || null, expiresAt]
   );
 
   const refreshTokenId = result.insertId;
@@ -123,8 +115,8 @@ export async function loginService(
       user_type_id: user.user_type_id,
       user_ref_id: user.user_ref_id,
       trang_thai_id: user.trang_thai_id,
-      refresh_token_id: refreshTokenId
-    }
+      refresh_token_id: refreshTokenId,
+    },
   };
 }
 
@@ -150,23 +142,23 @@ interface DbRefreshToken extends RowDataPacket {
   expires_at: Date;
 }
 
-
 export async function refreshService(
   refreshToken: string,
   userAgent?: string,
   ipAddress?: string
 ) {
   try {
-    const payload = jwt.verify(
-      refreshToken,
-      ENV.JWT_REFRESH_SECRET
-    ) as { userId: number; iat: number; exp: number };
+    const payload = jwt.verify(refreshToken, ENV.JWT_REFRESH_SECRET) as {
+      userId: number;
+      iat: number;
+      exp: number;
+    };
 
     const userId = payload.userId;
     const tokenHash = crypto
-      .createHash('sha256')
+      .createHash("sha256")
       .update(refreshToken)
-      .digest('hex');
+      .digest("hex");
 
     const [rows] = await pool.query<DbRefreshToken[]>(
       `
@@ -185,7 +177,6 @@ export async function refreshService(
     }
 
     const rt = rows[0];
-
 
     const [userRows] = await pool.query<DbUser[]>(
       `
@@ -215,22 +206,22 @@ export async function refreshService(
         userId: user.id,
         roleId: user.role_id,
         userTypeId: user.user_type_id,
-        userRefId: user.user_ref_id
+        userRefId: user.user_ref_id,
       },
       ENV.JWT_ACCESS_SECRET,
-      { expiresIn: '2h' }
+      { expiresIn: "2h" }
     );
 
     const newRefreshToken = jwt.sign(
       { userId: user.id },
       ENV.JWT_REFRESH_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: "7d" }
     );
 
     const newRefreshTokenHash = crypto
-      .createHash('sha256')
+      .createHash("sha256")
       .update(newRefreshToken)
-      .digest('hex');
+      .digest("hex");
 
     const newExpiresAt = new Date();
     newExpiresAt.setDate(newExpiresAt.getDate() + 7);
@@ -246,7 +237,7 @@ export async function refreshService(
         userAgent || null,
         ipAddress || null,
         newExpiresAt,
-        rt.id
+        rt.id,
       ]
     );
 
@@ -260,24 +251,22 @@ export async function refreshService(
         role_id: user.role_id,
         user_type_id: user.user_type_id,
         user_ref_id: user.user_ref_id,
-        trang_thai_id: user.trang_thai_id
-      }
+        trang_thai_id: user.trang_thai_id,
+      },
     };
   } catch (err) {
-    console.error('refreshService error:', err);
+    console.error("refreshService error:", err);
     return null;
   }
 }
-
 
 export async function logoutService(refreshToken: string) {
   if (!refreshToken) return;
 
   const tokenHash = crypto
-    .createHash('sha256')
+    .createHash("sha256")
     .update(refreshToken)
-    .digest('hex');
-
+    .digest("hex");
 
   await pool.query<ResultSetHeader>(
     `
@@ -344,8 +333,6 @@ export async function changePasswordService(params: {
   return result.affectedRows > 0;
 }
 
-
-
 //tạo tk
 interface CreateUserInput {
   username: string;
@@ -356,17 +343,14 @@ interface CreateUserInput {
   user_ref_id?: number | null;
 }
 
-
-
 export async function registerService(input: CreateUserInput) {
   const {
     username,
     password,
     email,
-    role_id = 1,        // ví dụ: 1 = ADMIN, 2 = USER
-    user_type_id = 1,   // tùy bạn quy ước
+    role_id = 1, // ví dụ: 1 = ADMIN, 2 = USER
+    user_type_id = 1, // tùy bạn quy ước
     user_ref_id = 1,
-    
   } = input;
 
   // 1. Kiểm tra trùng username hoặc email
@@ -383,10 +367,10 @@ export async function registerService(input: CreateUserInput) {
   if (existRows.length > 0) {
     const exist = existRows[0];
     if (exist.username === username) {
-      throw new Error('USERNAME_EXISTS');
+      throw new Error("USERNAME_EXISTS");
     }
     if (email && exist.email === email) {
-      throw new Error('EMAIL_EXISTS');
+      throw new Error("EMAIL_EXISTS");
     }
   }
 
@@ -408,7 +392,7 @@ export async function registerService(input: CreateUserInput) {
       role_id,
       user_type_id,
       user_ref_id,
-      1 // trang_thai_id = 1 (active)
+      1, // trang_thai_id = 1 (active)
     ]
   );
 
@@ -444,7 +428,7 @@ export async function registerService(input: CreateUserInput) {
     user_ref_id: user.user_ref_id,
     trang_thai_id: user.trang_thai_id,
     created_at: user.created_at,
-    updated_at: user.updated_at
+    updated_at: user.updated_at,
   };
 }
 
@@ -465,8 +449,8 @@ function pickDisplayColumn(
   cols: ColumnRow[],
   referencedColumn: string
 ): string | null {
-  const stringCols = cols.filter(c =>
-    ['char', 'varchar', 'text', 'mediumtext', 'longtext'].includes(
+  const stringCols = cols.filter((c) =>
+    ["char", "varchar", "text", "mediumtext", "longtext"].includes(
       c.DATA_TYPE.toLowerCase()
     )
   );
@@ -474,15 +458,15 @@ function pickDisplayColumn(
   if (stringCols.length === 0) return null;
 
   let candidate =
-    stringCols.find(c => c.COLUMN_NAME.toLowerCase().startsWith('ten_')) ||
-    stringCols.find(c => c.COLUMN_NAME.toLowerCase().includes('name'));
+    stringCols.find((c) => c.COLUMN_NAME.toLowerCase().startsWith("ten_")) ||
+    stringCols.find((c) => c.COLUMN_NAME.toLowerCase().includes("name"));
 
   if (candidate) return candidate.COLUMN_NAME;
 
   candidate = stringCols.find(
-    c =>
+    (c) =>
       c.COLUMN_NAME.toLowerCase() !== referencedColumn.toLowerCase() &&
-      !c.COLUMN_NAME.toLowerCase().includes('id')
+      !c.COLUMN_NAME.toLowerCase().includes("id")
   );
   if (candidate) return candidate.COLUMN_NAME;
 
@@ -514,10 +498,14 @@ export async function selectWithFkRealText(tableName: string) {
     [dbName, tableName]
   );
 
-
   const fkMap = new Map<
     string,
-    { refTable: string; refColumn: string; displayColumn: string | null; alias: string }
+    {
+      refTable: string;
+      refColumn: string;
+      displayColumn: string | null;
+      alias: string;
+    }
   >();
   let aliasIndex = 1;
   for (const fk of fkRows) {
@@ -536,16 +524,15 @@ export async function selectWithFkRealText(tableName: string) {
     );
 
     const displayColumn = pickDisplayColumn(refCols, refColumn);
-    const alias = `fk_${aliasIndex++}`; 
+    const alias = `fk_${aliasIndex++}`;
 
     fkMap.set(colName, {
       refTable,
       refColumn,
       displayColumn,
-      alias
+      alias,
     });
   }
-
 
   const selectParts: string[] = [];
 
@@ -576,9 +563,9 @@ export async function selectWithFkRealText(tableName: string) {
 
   const sql = `
     SELECT
-      ${selectParts.join(',\n      ')}
+      ${selectParts.join(",\n      ")}
     FROM \`${tableName}\` AS t
-    ${joinParts.length ? '\n' + joinParts.join('\n') : ''}
+    ${joinParts.length ? "\n" + joinParts.join("\n") : ""}
   `;
 
   const [rows] = await pool.query<RowDataPacket[]>(sql);

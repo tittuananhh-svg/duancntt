@@ -32,7 +32,9 @@ const mailer = nodemailer.createTransport({
 function normalizeWebUrl(web?: string) {
   const w = (web || "").trim();
   if (!w) return "";
-  return w.startsWith("http://") || w.startsWith("https://") ? w : `https://${w}`;
+  return w.startsWith("http://") || w.startsWith("https://")
+    ? w
+    : `https://${w}`;
 }
 
 async function sendStudentWelcomeEmail(opts: {
@@ -98,25 +100,25 @@ export async function searchSinhVien(q: string): Promise<SinhVien[]> {
 export async function getSinhVienById(id: number): Promise<SinhVien | null> {
   const [rows] = await pool.query<RowDataPacket[]>(
     "SELECT * FROM sinh_vien WHERE id = ?",
-    [id],
+    [id]
   );
   const list = rows as unknown as SinhVien[];
   return list[0] || null;
 }
 
 function isMysqlDup(err: any) {
-  return err?.code === 'ER_DUP_ENTRY' || err?.errno === 1062;
+  return err?.code === "ER_DUP_ENTRY" || err?.errno === 1062;
 }
 
 function getDupFieldFromMsg(sqlMessage?: string) {
   // ví dụ: "Duplicate entry 'abc@gmail.com' for key 'email'"
   // hoặc:  "... for key 'users.email'" tuỳ MySQL
   const m = sqlMessage?.match(/for key '([^']+)'/);
-  const key = m?.[1] || '';
+  const key = m?.[1] || "";
   // key có thể là email / username / users.email / uniq_users_email ...
-  if (key.includes('email')) return 'email';
-  if (key.includes('username')) return 'username';
-  return 'unknown';
+  if (key.includes("email")) return "email";
+  if (key.includes("username")) return "username";
+  return "unknown";
 }
 
 export async function createSinhVien(payload: {
@@ -146,20 +148,20 @@ export async function createSinhVien(payload: {
     } = payload;
 
     if (!email) {
-      const e: any = new Error('EMAIL_REQUIRED');
+      const e: any = new Error("EMAIL_REQUIRED");
       throw e;
     }
 
     // (khuyến nghị) check sớm ở mức app để message chuẩn + tránh rollback tốn
     const [checkUser] = await conn.query<any[]>(
       `SELECT id, username, email FROM users WHERE username = ? OR email = ? LIMIT 1`,
-      [ma_sv, email],
+      [ma_sv, email]
     );
     if (Array.isArray(checkUser) && checkUser.length > 0) {
       const existed = checkUser[0];
-      if (existed.username === ma_sv) throw new Error('USERNAME_EXISTS');
-      if (existed.email === email) throw new Error('EMAIL_EXISTS');
-      throw new Error('USER_EXISTS');
+      if (existed.username === ma_sv) throw new Error("USERNAME_EXISTS");
+      if (existed.email === email) throw new Error("EMAIL_EXISTS");
+      throw new Error("USER_EXISTS");
     }
 
     // ====== INSERT SINH_VIEN / USERS theo flow bạn đang dùng ======
@@ -174,11 +176,11 @@ export async function createSinhVien(payload: {
         (username, password_hash, email, role_id, user_type_id, user_ref_id,
          trang_thai_id, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, NULL, 1, NOW(), NOW())`,
-      [ma_sv, passwordHash, email, 3, USER_TYPE_ID_STUDENT],
+      [ma_sv, passwordHash, email, 3, USER_TYPE_ID_STUDENT]
     );
 
     const userId = userResult.insertId;
-    if (!userId) throw new Error('INSERT_USERS_FAILED');
+    if (!userId) throw new Error("INSERT_USERS_FAILED");
 
     const [svResult] = await conn.query<ResultSetHeader>(
       `INSERT INTO sinh_vien 
@@ -195,11 +197,11 @@ export async function createSinhVien(payload: {
         gioi_tinh_id,
         ngay_sinh,
         userId,
-      ],
+      ]
     );
 
     const sinhVienId = svResult.insertId;
-    if (!sinhVienId) throw new Error('INSERT_SINHVIEN_FAILED');
+    if (!sinhVienId) throw new Error("INSERT_SINHVIEN_FAILED");
 
     await conn.query(`UPDATE users SET user_ref_id = ? WHERE id = ?`, [
       sinhVienId,
@@ -216,11 +218,11 @@ export async function createSinhVien(payload: {
         password: plainPassword,
       });
     } catch (e) {
-      console.error('Send email failed:', e);
+      console.error("Send email failed:", e);
     }
 
     const newRecord = await getSinhVienById(sinhVienId);
-    if (!newRecord) throw new Error('FETCH_AFTER_CREATE_FAILED');
+    if (!newRecord) throw new Error("FETCH_AFTER_CREATE_FAILED");
 
     return newRecord;
   } catch (err: any) {
@@ -229,9 +231,9 @@ export async function createSinhVien(payload: {
     // map lỗi DB duplicate thành lỗi nghiệp vụ
     if (isMysqlDup(err)) {
       const field = getDupFieldFromMsg(err?.sqlMessage);
-      if (field === 'email') throw new Error('EMAIL_EXISTS');
-      if (field === 'username') throw new Error('USERNAME_EXISTS');
-      throw new Error('DUPLICATE_ENTRY');
+      if (field === "email") throw new Error("EMAIL_EXISTS");
+      if (field === "username") throw new Error("USERNAME_EXISTS");
+      throw new Error("DUPLICATE_ENTRY");
     }
 
     throw err;
@@ -239,9 +241,6 @@ export async function createSinhVien(payload: {
     conn.release();
   }
 }
-
-
-
 
 export async function updateSinhVien(
   id: number,
@@ -256,7 +255,7 @@ export async function updateSinhVien(
     ngay_sinh?: string | null;
     trang_thai_id?: number | null;
     user?: string | null;
-  },
+  }
 ): Promise<SinhVien | null> {
   const {
     ma_sv,
@@ -297,7 +296,7 @@ export async function updateSinhVien(
       trang_thai_id,
       user,
       id,
-    ],
+    ]
   );
 
   const updated = await getSinhVienById(id);
@@ -309,7 +308,7 @@ export async function deleteSinhVien(id: number): Promise<boolean> {
     `UPDATE sinh_vien 
        SET trang_thai_id = 2, updated_at = NOW()
      WHERE id = ?`,
-    [id],
+    [id]
   );
 
   return result.affectedRows > 0;

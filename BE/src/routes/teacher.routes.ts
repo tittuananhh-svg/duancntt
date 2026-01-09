@@ -1,7 +1,10 @@
 import { Router } from "express";
-import { getThoiKhoaBieuGiangVienController } from "../controllers/teacher.controllers";
+import {
+  getThoiKhoaBieuGiangVienController,
+  getMeGiangVienController,
+} from "../controllers/teacher.controllers";
 const router = Router();
 
-router.post("/thoi-khoa-bieu", getThoiKhoaBieuGiangVienController);
-
+router.get("/thoi-khoa-bieu", getThoiKhoaBieuGiangVienController);
+router.get("/getinfo", getMeGiangVienController);
 export default router;

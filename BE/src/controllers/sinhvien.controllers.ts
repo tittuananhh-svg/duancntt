@@ -1,21 +1,21 @@
-import { Request, Response } from 'express';
+import { Request, Response } from "express";
 import {
   createSinhVien,
   deleteSinhVien,
   getSinhVienById,
   searchSinhVien,
   updateSinhVien,
-} from '../services/sinhvien.service';
+} from "../services/sinhvien.service";
 
 // GET /sinh-vien?q=keyword  → danh sách + search
 export async function getListSinhVien(req: Request, res: Response) {
   try {
-    const q = (req.query.q as string) || '';
+    const q = (req.query.q as string) || "";
     const data = await searchSinhVien(q);
     res.json({ success: true, data });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: 'Lỗi server' });
+    res.status(500).json({ success: false, message: "Lỗi server" });
   }
 }
 
@@ -27,12 +27,12 @@ export async function getOneSinhVien(req: Request, res: Response) {
     if (!sv) {
       return res
         .status(404)
-        .json({ success: false, message: 'Không tìm thấy sinh viên' });
+        .json({ success: false, message: "Không tìm thấy sinh viên" });
     }
     res.json({ success: true, data: sv });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: 'Lỗi server' });
+    res.status(500).json({ success: false, message: "Lỗi server" });
   }
 }
 
@@ -54,7 +54,7 @@ export async function createSinhVienHandler(req: Request, res: Response) {
     if (!ma_sv || !ho_ten) {
       return res.status(400).json({
         success: false,
-        message: 'ma_sv và ho_ten là bắt buộc',
+        message: "ma_sv và ho_ten là bắt buộc",
       });
     }
 
@@ -67,23 +67,28 @@ export async function createSinhVienHandler(req: Request, res: Response) {
       lop_nien_che: lop_nien_che ?? null,
       gioi_tinh_id: gioi_tinh_id ? Number(gioi_tinh_id) : null,
       ngay_sinh: ngay_sinh || null,
-
     });
 
     return res.status(201).json({ success: true, data: sv });
   } catch (err: any) {
-    if (err?.message === 'EMAIL_EXISTS') {
-      return res.status(409).json({ success: false, message: 'Email đã tồn tại trong hệ thống' });
+    if (err?.message === "EMAIL_EXISTS") {
+      return res
+        .status(409)
+        .json({ success: false, message: "Email đã tồn tại trong hệ thống" });
     }
-    if (err?.message === 'USERNAME_EXISTS') {
-      return res.status(409).json({ success: false, message: 'Mã sinh viên đã tồn tại trong hệ thống' });
+    if (err?.message === "USERNAME_EXISTS") {
+      return res
+        .status(409)
+        .json({
+          success: false,
+          message: "Mã sinh viên đã tồn tại trong hệ thống",
+        });
     }
 
     console.error(err);
-    return res.status(500).json({ success: false, message: 'Lỗi server' });
+    return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 }
-
 
 // PUT /sinh-vien/:id       → cập nhật
 export async function updateSinhVienHandler(req: Request, res: Response) {
@@ -93,7 +98,7 @@ export async function updateSinhVienHandler(req: Request, res: Response) {
     if (!existed) {
       return res
         .status(404)
-        .json({ success: false, message: 'Không tìm thấy sinh viên' });
+        .json({ success: false, message: "Không tìm thấy sinh viên" });
     }
 
     const {
@@ -116,7 +121,9 @@ export async function updateSinhVienHandler(req: Request, res: Response) {
       sdt: sdt !== undefined ? sdt : existed.sdt ?? null,
       khoa_id:
         khoa_id !== undefined
-          ? (khoa_id ? Number(khoa_id) : null)
+          ? khoa_id
+            ? Number(khoa_id)
+            : null
           : existed.khoa_id ?? null,
       lop_nien_che:
         lop_nien_che !== undefined
@@ -124,7 +131,9 @@ export async function updateSinhVienHandler(req: Request, res: Response) {
           : existed.lop_nien_che ?? null,
       gioi_tinh_id:
         gioi_tinh_id !== undefined
-          ? (gioi_tinh_id ? Number(gioi_tinh_id) : null)
+          ? gioi_tinh_id
+            ? Number(gioi_tinh_id)
+            : null
           : existed.gioi_tinh_id ?? null,
       ngay_sinh:
         ngay_sinh !== undefined
@@ -140,7 +149,7 @@ export async function updateSinhVienHandler(req: Request, res: Response) {
     res.json({ success: true, data: sv });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: 'Lỗi server' });
+    res.status(500).json({ success: false, message: "Lỗi server" });
   }
 }
 
@@ -152,14 +161,15 @@ export async function deleteSinhVienHandler(req: Request, res: Response) {
     if (!ok) {
       return res
         .status(404)
-        .json({ success: false, message: 'Không tìm thấy sinh viên' });
+        .json({ success: false, message: "Không tìm thấy sinh viên" });
     }
     res.json({
       success: true,
-      message: 'Đã cập nhật trạng thái sinh viên thành nghỉ (trang_thai_id = 2)',
+      message:
+        "Đã cập nhật trạng thái sinh viên thành nghỉ (trang_thai_id = 2)",
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: 'Lỗi server' });
+    res.status(500).json({ success: false, message: "Lỗi server" });
   }
 }

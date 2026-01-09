@@ -1,50 +1,83 @@
 import type { Request, Response } from "express";
-import { getThoiKhoaBieuSinhVien } from "../services/student.services";
+import type { AuthRequest } from "../middlewares/authGuard";
+import {
+  getThoiKhoaBieuSinhVienByUser,
+  getSinhVienMeByUserId,
+} from "../services/student.services";
+
+function q1(v: any) {
+  return Array.isArray(v) ? v[0] : v;
+}
 
 export async function getThoiKhoaBieuSinhVienController(
   req: Request,
   res: Response
 ) {
   try {
-    const { ky_hoc_id, sinh_vien_id } = req.body;
+    const authReq = req as AuthRequest;
+    const userId = authReq.user?.userId;
 
-    if (
-      ky_hoc_id === undefined ||
-      ky_hoc_id === null ||
-      Number.isNaN(Number(ky_hoc_id))
-    ) {
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ status: "error", message: "Chưa đăng nhập hoặc thiếu token" });
+    }
+
+    const ky_hoc_id_raw = q1(req.query.ky_hoc_id);
+    const ky_hoc_id = Number(ky_hoc_id_raw);
+
+    if (ky_hoc_id_raw == null || Number.isNaN(ky_hoc_id)) {
       return res.status(400).json({
         status: "error",
-        message: "Vui lòng truyền ky_hoc_id ",
+        message: "Vui lòng truyền ky_hoc_id (number)",
       });
     }
 
-    if (
-      sinh_vien_id === undefined ||
-      sinh_vien_id === null ||
-      Number.isNaN(Number(sinh_vien_id))
-    ) {
-      return res.status(400).json({
-        status: "error",
-        message: "Vui lòng truyền sinh_vien_id ",
-      });
-    }
-
-    const data = await getThoiKhoaBieuSinhVien({
-      ky_hoc_id: Number(ky_hoc_id),
-      sinh_vien_id: Number(sinh_vien_id),
+    const data = await getThoiKhoaBieuSinhVienByUser({
+      user_id: userId,
+      ky_hoc_id,
     });
 
     return res.status(200).json({
       status: "success",
-      message: "Lấy thời khóa biểu sinh viên thành công",
+      message: "Lấy TKB sinh viên thành công",
       data,
     });
   } catch (e: any) {
-    return res.status(500).json({
-      status: "error",
-      message: "Lỗi server",
-      error: e?.message ?? e,
+    return res
+      .status(500)
+      .json({ status: "error", message: "Lỗi server", error: e?.message ?? e });
+  }
+}
+
+export async function getMeSinhVienController(req: Request, res: Response) {
+  try {
+    const authReq = req as AuthRequest;
+    const userId = authReq.user?.userId;
+
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ status: "error", message: "Chưa đăng nhập hoặc thiếu token" });
+    }
+
+    const data = await getSinhVienMeByUserId(userId);
+
+    if (!data) {
+      return res.status(404).json({
+        status: "error",
+        message: "Không tìm thấy thông tin sinh viên",
+      });
+    }
+
+    return res.status(200).json({
+      status: "success",
+      message: "Lấy thông tin sinh viên thành công",
+      data,
     });
+  } catch (e: any) {
+    return res
+      .status(500)
+      .json({ status: "error", message: "Lỗi server", error: e?.message ?? e });
   }
 }

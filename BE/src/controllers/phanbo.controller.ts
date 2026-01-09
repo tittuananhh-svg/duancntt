@@ -59,7 +59,7 @@ export async function allocateStudentsToMonHoc(req: Request, res: Response) {
 
 export async function getSinhVienByKyHoc(req: Request, res: Response) {
   try {
-    const { ky_hoc_id } = req.body; // hoặc req.query tùy bạn
+    const { ky_hoc_id } = req.body;
 
     if (!ky_hoc_id || Number.isNaN(Number(ky_hoc_id))) {
       return res.status(400).json({
@@ -103,8 +103,8 @@ export async function getSinhVienDaDangKyByMaLopHP(
 
     const data = await getSinhVienByMaLopHP({
       ma_lop_hp: String(ma_lop_hp).trim(),
-      only_active_student: true, // sv.trang_thai_id = 1
-      only_active_registration: false, // nếu bạn muốn lọc đăng ký đang học thì true
+      only_active_student: true,
+      only_active_registration: false,
     });
 
     return res.status(200).json({
