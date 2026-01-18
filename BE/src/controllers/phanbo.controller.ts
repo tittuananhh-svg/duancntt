@@ -89,7 +89,7 @@ export async function getSinhVienByKyHoc(req: Request, res: Response) {
 
 export async function getSinhVienDaDangKyByMaLopHP(
   req: Request,
-  res: Response
+  res: Response,
 ) {
   try {
     const { ma_lop_hp } = req.body;

@@ -61,6 +61,16 @@ import {
   updateKeHoachThiController,
 } from "../controllers/kehoachthi.controller";
 
+import {
+  allocateOneMonHocInKyController,
+  allocateManyMonHocController,
+  allocateAllMonHocInKyController,
+} from "../controllers/management.controllers";
+
+import { getSinhVienThieuTinChiController } from "../controllers/report.controller";
+
+import { forceAllocateController } from "../controllers/forceAllocate.controller";
+
 const router = Router();
 
 /* ================== KHOA ================== */
@@ -133,7 +143,7 @@ router.get("/lop-hoc-phan/mon-hoc-theo-ky/:ky_hoc_id", getMonHocTheoKyHandler);
 router.get("/lop-hoc-phan/phong-theo-ky/:ky_hoc_id", getPhongTheoKyHandler);
 router.get(
   "/lop-hoc-phan/danh-sach-theo-ky/:ky_hoc_id",
-  getDanhSachLopTheoKyHandler
+  getDanhSachLopTheoKyHandler,
 );
 
 // Thông tin theo mã lớp HP
@@ -149,5 +159,13 @@ router.post("/sinh-vien-theo-ma-lop-hp", getSinhVienDaDangKyByMaLopHP);
 router.post("/ke-hoach-thi/list", listKeHoachThiController);
 router.post("/ke-hoach-thi/create", createKeHoachThiController);
 router.put("/ke-hoach-thi/update", updateKeHoachThiController);
+
+router.post("/phan-bo/mon-hoc", allocateOneMonHocInKyController);
+router.post("/phan-bo/mon-hoc/bulk", allocateManyMonHocController);
+router.post("/phan-bo/ky-hoc", allocateAllMonHocInKyController);
+router.post("/phan-bo/ep-cung", forceAllocateController);
+
+// report
+router.get("/bao-cao/sv-thieu-tin-chi", getSinhVienThieuTinChiController);
 
 export default router;
