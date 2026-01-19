@@ -24,7 +24,7 @@ export async function getDanhSachLopHocPhanCuaGiangVienByUserId(
 ): Promise<LopHocPhanGVItem[]> {
   const sql = `
     SELECT
-      lhp.ma_lop_hp,
+      lhp.ma_lop_hp, lhp.id,
 
       kh.hoc_ky,
       kh.nam_hoc,
@@ -51,6 +51,7 @@ export async function getDanhSachLopHocPhanCuaGiangVienByUserId(
   const [rows] = await pool.query<RowDataPacket[]>(sql, [userId]);
 
   return (rows as any[]).map((r) => ({
+    ma_lop_hp_id: String(r.id),
     ma_lop_hp: String(r.ma_lop_hp),
 
     hoc_ky: r.hoc_ky ?? null,
