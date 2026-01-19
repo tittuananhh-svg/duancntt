@@ -71,6 +71,12 @@ import { getSinhVienThieuTinChiController } from "../controllers/report.controll
 
 import { forceAllocateController } from "../controllers/forceAllocate.controller";
 
+import { getSinhVienDaDangKyTrongKyController } from "../controllers/dangKyMonHoc.controller";
+import {
+  createLichThi,
+  getLichThiList,
+} from "../controllers/lichThi.controller";
+
 const router = Router();
 
 /* ================== KHOA ================== */
@@ -167,5 +173,10 @@ router.post("/phan-bo/ep-cung", forceAllocateController);
 
 // report
 router.get("/bao-cao/sv-thieu-tin-chi", getSinhVienThieuTinChiController);
+
+router.get("/dang-ky/sinh-vien-theo-ky", getSinhVienDaDangKyTrongKyController);
+
+router.post("/lich-thi", createLichThi);
+router.get("/lich-thi", getLichThiList);
 
 export default router;

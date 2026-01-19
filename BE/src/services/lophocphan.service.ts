@@ -1,4 +1,4 @@
-import { pool } from '../config/database';
+import { pool } from "../config/database";
 
 export type LichHocItem = {
   thu_trong_tuan: number;
@@ -36,13 +36,18 @@ export type UpdateLopHocPhanPayload = Partial<{
   lich_hoc: LichHocItem[];
 }>;
 
-function isOverlapping(aStart: number, aEnd: number, bStart: number, bEnd: number) {
+function isOverlapping(
+  aStart: number,
+  aEnd: number,
+  bStart: number,
+  bEnd: number,
+) {
   return !(aEnd < bStart || aStart > bEnd);
 }
 
 function validateLichHoc(lich_hoc: LichHocItem[]) {
   if (!Array.isArray(lich_hoc) || lich_hoc.length === 0) {
-    throw { status: 400, message: 'Thiếu lịch học (lich_hoc)' };
+    throw { status: 400, message: "Thiếu lịch học (lich_hoc)" };
   }
 
   for (const item of lich_hoc) {
@@ -53,11 +58,12 @@ function validateLichHoc(lich_hoc: LichHocItem[]) {
     ) {
       throw {
         status: 400,
-        message: 'Mỗi lịch học cần: thu_trong_tuan, ca_bat_dau_id, ca_ket_thuc_id',
+        message:
+          "Mỗi lịch học cần: thu_trong_tuan, ca_bat_dau_id, ca_ket_thuc_id",
       };
     }
     if (item.ca_bat_dau_id > item.ca_ket_thuc_id) {
-      throw { status: 400, message: 'ca_bat_dau_id phải <= ca_ket_thuc_id' };
+      throw { status: 400, message: "ca_bat_dau_id phải <= ca_ket_thuc_id" };
     }
   }
 
@@ -70,24 +76,32 @@ function validateLichHoc(lich_hoc: LichHocItem[]) {
             lich_hoc[i].ca_bat_dau_id,
             lich_hoc[i].ca_ket_thuc_id,
             lich_hoc[j].ca_bat_dau_id,
-            lich_hoc[j].ca_ket_thuc_id
+            lich_hoc[j].ca_ket_thuc_id,
           )
         ) {
-          throw { status: 400, message: 'Lịch học gửi lên bị trùng/đè ca trong cùng một thứ' };
+          throw {
+            status: 400,
+            message: "Lịch học gửi lên bị trùng/đè ca trong cùng một thứ",
+          };
         }
       }
     }
   }
 }
 
-
-async function execRows<T>(conn: any, sql: string, params: any[] = []): Promise<T[]> {
+async function execRows<T>(
+  conn: any,
+  sql: string,
+  params: any[] = [],
+): Promise<T[]> {
   const [rows] = await (conn as any).execute(sql, params);
   return rows as T[];
 }
 
-
-async function getLichHocByMaLopHP(conn: any, ma_lop_hp: string): Promise<LichHocItem[]> {
+async function getLichHocByMaLopHP(
+  conn: any,
+  ma_lop_hp: string,
+): Promise<LichHocItem[]> {
   const rows = await execRows<LichHocItem>(
     conn,
     `
@@ -96,7 +110,7 @@ async function getLichHocByMaLopHP(conn: any, ma_lop_hp: string): Promise<LichHo
       WHERE ma_lop_hp = ?
       ORDER BY thu_trong_tuan ASC, ca_bat_dau_id ASC
     `,
-    [ma_lop_hp]
+    [ma_lop_hp],
   );
   return rows;
 }
@@ -105,12 +119,11 @@ async function getLopHocPhanRow(conn: any, ma_lop_hp: string) {
   const rows = await execRows<any>(
     conn,
     `SELECT * FROM lop_hoc_phan WHERE ma_lop_hp = ? LIMIT 1`,
-    [ma_lop_hp]
+    [ma_lop_hp],
   );
 
   return rows.length ? rows[0] : null;
 }
-
 
 async function checkConflictRoomAndTeacher(
   conn: any,
@@ -120,13 +133,14 @@ async function checkConflictRoomAndTeacher(
     giang_vien_id: number;
     lich_hoc: LichHocItem[];
     exclude_ma_lop_hp?: string;
-  }
+  },
 ) {
-  const { ky_hoc_id, phong_id, giang_vien_id, lich_hoc, exclude_ma_lop_hp } = params;
+  const { ky_hoc_id, phong_id, giang_vien_id, lich_hoc, exclude_ma_lop_hp } =
+    params;
 
   for (const item of lich_hoc) {
     // trùng phòng
-   let roomSql = `
+    let roomSql = `
   SELECT lhp.ma_lop_hp, tgh.thu_trong_tuan, tgh.ca_bat_dau_id, tgh.ca_ket_thuc_id
   FROM lop_hoc_phan lhp
   JOIN thoigianhoc_lophocphan tgh ON tgh.ma_lop_hp = lhp.ma_lop_hp
@@ -136,23 +150,22 @@ async function checkConflictRoomAndTeacher(
     AND NOT (tgh.ca_ket_thuc_id < ? OR tgh.ca_bat_dau_id > ?)
 `;
 
-const roomParams: any[] = [
-  ky_hoc_id,
-  phong_id,
-  item.thu_trong_tuan,
-  item.ca_bat_dau_id,
-  item.ca_ket_thuc_id,
-];
+    const roomParams: any[] = [
+      ky_hoc_id,
+      phong_id,
+      item.thu_trong_tuan,
+      item.ca_bat_dau_id,
+      item.ca_ket_thuc_id,
+    ];
 
-if (exclude_ma_lop_hp) {
-  roomSql += ` AND lhp.ma_lop_hp <> ?`;
-  roomParams.push(exclude_ma_lop_hp);
-}
+    if (exclude_ma_lop_hp) {
+      roomSql += ` AND lhp.ma_lop_hp <> ?`;
+      roomParams.push(exclude_ma_lop_hp);
+    }
 
-roomSql += ` LIMIT 1`;
+    roomSql += ` LIMIT 1`;
 
-const [roomConflicts] = await conn.execute(roomSql, roomParams);
-
+    const [roomConflicts] = await conn.execute(roomSql, roomParams);
 
     if (roomConflicts.length > 0) {
       const c = roomConflicts[0];
@@ -175,23 +188,22 @@ const [roomConflicts] = await conn.execute(roomSql, roomParams);
     AND NOT (tgh.ca_ket_thuc_id < ? OR tgh.ca_bat_dau_id > ?)
 `;
 
-const teacherParams: any[] = [
-  ky_hoc_id,
-  giang_vien_id,
-  item.thu_trong_tuan,
-  item.ca_bat_dau_id,
-  item.ca_ket_thuc_id,
-];
+    const teacherParams: any[] = [
+      ky_hoc_id,
+      giang_vien_id,
+      item.thu_trong_tuan,
+      item.ca_bat_dau_id,
+      item.ca_ket_thuc_id,
+    ];
 
-if (exclude_ma_lop_hp) {
-  teacherSql += ` AND lhp.ma_lop_hp <> ?`;
-  teacherParams.push(exclude_ma_lop_hp);
-}
+    if (exclude_ma_lop_hp) {
+      teacherSql += ` AND lhp.ma_lop_hp <> ?`;
+      teacherParams.push(exclude_ma_lop_hp);
+    }
 
-teacherSql += ` LIMIT 1`;
+    teacherSql += ` LIMIT 1`;
 
-const [teacherConflicts] = await conn.execute(teacherSql, teacherParams);
-
+    const [teacherConflicts] = await conn.execute(teacherSql, teacherParams);
 
     if (teacherConflicts.length > 0) {
       const c = teacherConflicts[0];
@@ -222,7 +234,8 @@ export async function createPhanBoLopHocPhan(payload: CreateLopHocPhanPayload) {
   if (!ma_lop_hp || !mon_hoc_id || !ky_hoc_id || !phong_id || !giang_vien_id) {
     throw {
       status: 400,
-      message: 'Thiếu dữ liệu bắt buộc (ma_lop_hp, mon_hoc_id, ky_hoc_id, phong_id, giang_vien_id)',
+      message:
+        "Thiếu dữ liệu bắt buộc (ma_lop_hp, mon_hoc_id, ky_hoc_id, phong_id, giang_vien_id)",
     };
   }
 
@@ -235,15 +248,23 @@ export async function createPhanBoLopHocPhan(payload: CreateLopHocPhanPayload) {
     // ✅ 1) Check trùng mã lớp học phần (ma_lop_hp) trước
     const [existRows] = await (conn as any).execute(
       `SELECT ma_lop_hp FROM lop_hoc_phan WHERE ma_lop_hp = ? LIMIT 1`,
-      [ma_lop_hp]
+      [ma_lop_hp],
     );
 
     if (Array.isArray(existRows) && existRows.length > 0) {
-      throw { status: 409, message: `Mã lớp học phần đã tồn tại: ${ma_lop_hp}` };
+      throw {
+        status: 409,
+        message: `Mã lớp học phần đã tồn tại: ${ma_lop_hp}`,
+      };
     }
 
     // ✅ 2) Check trùng phòng/giảng viên theo ca trong học kỳ
-    await checkConflictRoomAndTeacher(conn, { ky_hoc_id, phong_id, giang_vien_id, lich_hoc });
+    await checkConflictRoomAndTeacher(conn, {
+      ky_hoc_id,
+      phong_id,
+      giang_vien_id,
+      lich_hoc,
+    });
 
     // ✅ 3) Insert lop_hoc_phan
     await (conn as any).execute(
@@ -255,7 +276,16 @@ export async function createPhanBoLopHocPhan(payload: CreateLopHocPhanPayload) {
         VALUES
           (?, ?, ?, ?, ?, ?, ?, ?, 2, NOW(), NOW())
       `,
-      [ma_lop_hp, mon_hoc_id, ky_hoc_id, phong_id, giang_vien_id, si_so_toi_da, si_so_du_kien, si_so_thuc_te]
+      [
+        ma_lop_hp,
+        mon_hoc_id,
+        ky_hoc_id,
+        phong_id,
+        giang_vien_id,
+        si_so_toi_da,
+        si_so_du_kien,
+        si_so_thuc_te,
+      ],
     );
 
     // ✅ 4) Insert lịch học
@@ -267,7 +297,12 @@ export async function createPhanBoLopHocPhan(payload: CreateLopHocPhanPayload) {
           VALUES
             (?, ?, ?, ?, NOW(), NOW())
         `,
-        [ma_lop_hp, item.thu_trong_tuan, item.ca_bat_dau_id, item.ca_ket_thuc_id]
+        [
+          ma_lop_hp,
+          item.thu_trong_tuan,
+          item.ca_bat_dau_id,
+          item.ca_ket_thuc_id,
+        ],
       );
     }
 
@@ -277,9 +312,12 @@ export async function createPhanBoLopHocPhan(payload: CreateLopHocPhanPayload) {
     await conn.rollback();
 
     // ✅ Bắt lỗi trùng UNIQUE (ma_lop_hp)
-    if (e?.code === 'ER_DUP_ENTRY') {
+    if (e?.code === "ER_DUP_ENTRY") {
       // Trường hợp ma_lop_hp UNIQUE bị trùng
-      return Promise.reject({ status: 409, message: `Mã lớp học phần đã tồn tại: ${ma_lop_hp}` });
+      return Promise.reject({
+        status: 409,
+        message: `Mã lớp học phần đã tồn tại: ${ma_lop_hp}`,
+      });
     }
 
     // ném lại lỗi khác
@@ -288,7 +326,6 @@ export async function createPhanBoLopHocPhan(payload: CreateLopHocPhanPayload) {
     conn.release();
   }
 }
-
 
 /** THÔNG TIN (DETAIL) */
 export async function getLopHocPhanDetail(ma_lop_hp: string) {
@@ -310,10 +347,15 @@ export async function deleteLopHocPhan(ma_lop_hp: string): Promise<boolean> {
   try {
     await conn.beginTransaction();
 
+    await conn.execute(
+      `DELETE FROM thoigianhoc_lophocphan WHERE ma_lop_hp = ?`,
+      [ma_lop_hp],
+    );
 
-    await conn.execute(`DELETE FROM thoigianhoc_lophocphan WHERE ma_lop_hp = ?`, [ma_lop_hp]);
-
-    const [rs] = await conn.execute<any>(`DELETE FROM lop_hoc_phan WHERE ma_lop_hp = ?`, [ma_lop_hp]);
+    const [rs] = await conn.execute<any>(
+      `DELETE FROM lop_hoc_phan WHERE ma_lop_hp = ?`,
+      [ma_lop_hp],
+    );
 
     await conn.commit();
     return rs.affectedRows > 0;
@@ -326,7 +368,10 @@ export async function deleteLopHocPhan(ma_lop_hp: string): Promise<boolean> {
 }
 
 /** UPDATE PARTIAL - chỉ update field truyền lên */
-export async function updateLopHocPhanPartial(ma_lop_hp: string, payload: UpdateLopHocPhanPayload) {
+export async function updateLopHocPhanPartial(
+  ma_lop_hp: string,
+  payload: UpdateLopHocPhanPayload,
+) {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -368,51 +413,54 @@ export async function updateLopHocPhanPartial(ma_lop_hp: string, payload: Update
     const values: any[] = [];
 
     if (payload.mon_hoc_id !== undefined) {
-      sets.push('mon_hoc_id = ?');
+      sets.push("mon_hoc_id = ?");
       values.push(payload.mon_hoc_id);
     }
     if (payload.ky_hoc_id !== undefined) {
-      sets.push('ky_hoc_id = ?');
+      sets.push("ky_hoc_id = ?");
       values.push(payload.ky_hoc_id);
     }
     if (payload.phong_id !== undefined) {
-      sets.push('phong_id = ?');
+      sets.push("phong_id = ?");
       values.push(payload.phong_id);
     }
     if (payload.giang_vien_id !== undefined) {
-      sets.push('giang_vien_id = ?');
+      sets.push("giang_vien_id = ?");
       values.push(payload.giang_vien_id);
     }
 
     if (payload.si_so_toi_da !== undefined) {
-      sets.push('si_so_toi_da = ?');
+      sets.push("si_so_toi_da = ?");
       values.push(payload.si_so_toi_da);
     }
     if (payload.si_so_du_kien !== undefined) {
-      sets.push('si_so_du_kien = ?');
+      sets.push("si_so_du_kien = ?");
       values.push(payload.si_so_du_kien);
     }
     if (payload.si_so_thuc_te !== undefined) {
-      sets.push('si_so_thuc_te = ?');
+      sets.push("si_so_thuc_te = ?");
       values.push(payload.si_so_thuc_te);
     }
 
     if (payload.trang_thai_id !== undefined) {
-      sets.push('trang_thai_id = ?');
+      sets.push("trang_thai_id = ?");
       values.push(payload.trang_thai_id);
     }
 
     const needUpdateParent = sets.length > 0 || hasLichHocUpdate;
-    if (needUpdateParent) sets.push('updated_at = NOW()');
+    if (needUpdateParent) sets.push("updated_at = NOW()");
 
     if (sets.length > 0) {
-      const sql = `UPDATE lop_hoc_phan SET ${sets.join(', ')} WHERE ma_lop_hp = ?`;
+      const sql = `UPDATE lop_hoc_phan SET ${sets.join(", ")} WHERE ma_lop_hp = ?`;
       values.push(ma_lop_hp);
       await conn.execute(sql, values);
     }
 
     if (hasLichHocUpdate) {
-      await conn.execute(`DELETE FROM thoigianhoc_lophocphan WHERE ma_lop_hp = ?`, [ma_lop_hp]);
+      await conn.execute(
+        `DELETE FROM thoigianhoc_lophocphan WHERE ma_lop_hp = ?`,
+        [ma_lop_hp],
+      );
 
       for (const item of payload.lich_hoc!) {
         await conn.execute(
@@ -422,7 +470,12 @@ export async function updateLopHocPhanPartial(ma_lop_hp: string, payload: Update
             VALUES
               (?, ?, ?, ?, NOW(), NOW())
           `,
-          [ma_lop_hp, item.thu_trong_tuan, item.ca_bat_dau_id, item.ca_ket_thuc_id]
+          [
+            ma_lop_hp,
+            item.thu_trong_tuan,
+            item.ca_bat_dau_id,
+            item.ca_ket_thuc_id,
+          ],
         );
       }
     }
@@ -437,7 +490,6 @@ export async function updateLopHocPhanPartial(ma_lop_hp: string, payload: Update
   }
 }
 
-
 // 1) Lấy môn học theo kỳ
 export async function getMonHocTheoKy(ky_hoc_id: number) {
   const [rows] = await pool.execute<any[]>(
@@ -446,14 +498,17 @@ export async function getMonHocTheoKy(ky_hoc_id: number) {
         mh.ma_mon       AS ma_mon,
         mh.ten_mon      AS ten_mon,
         COUNT(lhp.id)   AS so_lich,
-        COALESCE(SUM(lhp.si_so_toi_da), 0) AS so_luong
+
+        COALESCE(SUM(lhp.si_so_toi_da), 0) AS si_so_toi_da,
+        COALESCE(SUM(IFNULL(lhp.si_so_thuc_te, 0)), 0) AS si_so_thuc_te,
+        COALESCE(SUM(GREATEST(lhp.si_so_toi_da - IFNULL(lhp.si_so_thuc_te, 0), 0)), 0) AS si_so_kha_dung
       FROM lop_hoc_phan lhp
       JOIN mon_hoc mh ON mh.id = lhp.mon_hoc_id
       WHERE lhp.ky_hoc_id = ?
       GROUP BY lhp.mon_hoc_id, mh.ma_mon, mh.ten_mon
       ORDER BY mh.ma_mon
     `,
-    [ky_hoc_id]
+    [ky_hoc_id],
   );
   return rows;
 }
@@ -470,7 +525,7 @@ export async function getPhongTheoKy(ky_hoc_id: number) {
       WHERE lhp.ky_hoc_id = ?
       ORDER BY p.ma_phong
     `,
-    [ky_hoc_id]
+    [ky_hoc_id],
   );
   return rows;
 }
@@ -490,7 +545,10 @@ export async function getDanhSachLopTheoKy(ky_hoc_id: number) {
           ORDER BY tgh.thu_trong_tuan, tgh.ca_bat_dau_id
           SEPARATOR '; '
         ) AS lich,
-        lhp.si_so_toi_da AS si_so_toi_da
+
+        lhp.si_so_toi_da AS si_so_toi_da,
+        IFNULL(lhp.si_so_thuc_te, 0) AS si_so_thuc_te,
+        GREATEST(lhp.si_so_toi_da - IFNULL(lhp.si_so_thuc_te, 0), 0) AS si_so_kha_dung
       FROM lop_hoc_phan lhp
       JOIN mon_hoc mh ON mh.id = lhp.mon_hoc_id
       JOIN giang_vien gv ON gv.id = lhp.giang_vien_id
@@ -502,10 +560,11 @@ export async function getDanhSachLopTheoKy(ky_hoc_id: number) {
         mh.ma_mon, mh.ten_mon,
         gv.ma_gv, gv.ho_ten,
         p.ma_phong,
-        lhp.si_so_toi_da
+        lhp.si_so_toi_da,
+        lhp.si_so_thuc_te
       ORDER BY lhp.ma_lop_hp
     `,
-    [ky_hoc_id]
+    [ky_hoc_id],
   );
   return rows;
 }
