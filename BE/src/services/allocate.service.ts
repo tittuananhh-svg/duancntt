@@ -1,8 +1,4 @@
-import type {
-  PoolConnection,
-  RowDataPacket,
-  ResultSetHeader,
-} from "mysql2/promise";
+import type { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 import { pool } from "../config/database";
 
 type PrereqRow = {
@@ -12,45 +8,13 @@ type PrereqRow = {
   tin_chi_toi_thieu: number | null;
 };
 
-export type AllocateResult =
-  | {
-      ok: true;
-      mon_hoc_id: number;
-      ky_hoc_id: number;
-      total_capacity: number;
-      requested_per_section: number | null;
-      allocated_total: number;
-      allocated_detail: Array<{
-        lop_hoc_phan_id: number;
-        allocated: number;
-        sinh_vien_ids: number[];
-      }>;
-      skipped: {
-        not_eligible: number;
-        over_max_credits: number;
-      };
-    }
-  | {
-      ok: false;
-      error:
-        | "SO_LUONG_CAN_PHAN_BO_INVALID"
-        | "SO_LUONG_VUOT_SI_SO_LOP_HOC_PHAN"
-        | "KHONG_DU_SINH_VIEN_DU_DIEU_KIEN"
-        | "MON_HOC_NOT_FOUND"
-        | "NO_LOP_HOC_PHAN_FOR_THIS_MON_HOC_IN_KY"
-        | "TIN_CHI_CONFIG_NOT_FOUND"
-        | "TIN_CHI_CONFIG_DISABLED";
-      message?: string;
-      mon_hoc_id?: number;
-      ky_hoc_id?: number;
-      requested_per_section?: number;
-      not_enough_sections?: Array<{
-        lop_hoc_phan_id: number;
-        remaining: number;
-      }>;
-      required_total?: number;
-      eligible_total?: number;
-    };
+type TxConn = {
+  query: (sql: string, params?: any[]) => Promise<[any, any]>;
+  beginTransaction: () => Promise<void>;
+  commit: () => Promise<void>;
+  rollback: () => Promise<void>;
+  release: () => void;
+};
 
 function chunkArray<T>(arr: T[], size = 500) {
   const out: T[][] = [];
@@ -62,71 +26,16 @@ function intersect(a: number[], bSet: Set<number>) {
   return a.filter((x) => bSet.has(x));
 }
 
-async function getTinChiConfig(ky_hoc_id: number) {
-  const [rows] = await pool.query<RowDataPacket[]>(
-    `
-    SELECT so_tin_chi_toi_da, so_tin_chi_toi_thieu, trang_thai_id
-    FROM cau_hinh_tin_chi_ky_hoc
-    WHERE ky_hoc_id = ?
-    LIMIT 1
-    `,
-    [ky_hoc_id],
-  );
-
-  if (!rows.length) {
-    return { ok: false as const, error: "TIN_CHI_CONFIG_NOT_FOUND" as const };
-  }
-
-  const r: any = rows[0];
-  if (Number(r.trang_thai_id) !== 1) {
-    return { ok: false as const, error: "TIN_CHI_CONFIG_DISABLED" as const };
-  }
-
-  return {
-    ok: true as const,
-    max: Number(r.so_tin_chi_toi_da),
-    min: r.so_tin_chi_toi_thieu != null ? Number(r.so_tin_chi_toi_thieu) : 0,
-  };
-}
-
-/** Map: sinh_vien_id -> số tín đã đăng ký trong kỳ (distinct mon_hoc_id) */
-async function getRegisteredCreditsMapInKy(
-  ky_hoc_id: number,
-): Promise<Map<number, number>> {
-  const mp = new Map<number, number>();
-
-  const [rows] = await pool.query<RowDataPacket[]>(
-    `
-    SELECT t.sinh_vien_id, SUM(mh.so_tin_chi) AS so_tin
-    FROM (
-      SELECT DISTINCT dklhp.sinh_vien_id, lhp.mon_hoc_id
-      FROM dang_ky_lop_hoc_phan dklhp
-      JOIN lop_hoc_phan lhp ON lhp.id = dklhp.lop_hoc_phan_id
-      WHERE lhp.ky_hoc_id = ?
-    ) t
-    JOIN mon_hoc mh ON mh.id = t.mon_hoc_id
-    GROUP BY t.sinh_vien_id
-    `,
-    [ky_hoc_id],
-  );
-
-  for (const r of rows as any[]) {
-    mp.set(Number(r.sinh_vien_id), Number(r.so_tin ?? 0));
-  }
-
-  return mp;
-}
-
+/** PASS môn (xep_loai_id <= 4), có thể kèm điều kiện điểm tối thiểu */
 async function getPassedStudentIdsForCourse(
-  conn: PoolConnection,
+  conn: TxConn,
   monHocId: number,
   candidateIds: number[],
   diemToiThieu: number | null,
 ): Promise<Set<number>> {
   const ok = new Set<number>();
-  if (!candidateIds.length) return ok;
-
   const chunks = chunkArray(candidateIds, 500);
+
   for (const part of chunks) {
     const placeholders = part.map(() => "?").join(",");
 
@@ -144,23 +53,25 @@ async function getPassedStudentIdsForCourse(
     if (diemToiThieu != null) params.push(diemToiThieu);
     params.push(...part);
 
-    const [rows] = await conn.query<RowDataPacket[]>(sql, params);
-    for (const r of rows as any[]) ok.add(Number(r.sinh_vien_id));
+    const [rowsAny] = await conn.query(sql, params);
+    const rows = rowsAny as RowDataPacket[];
+
+    for (const r of rows as any[]) ok.add(Number((r as any).sinh_vien_id));
   }
 
   return ok;
 }
 
+/** Đang đăng ký môn trong KỲ (dùng cho điều kiện song_hanh) */
 async function getCurrentlyRegisteredStudentIdsForCourseInKy(
-  conn: PoolConnection,
+  conn: TxConn,
   monHocId: number,
   kyHocId: number,
   candidateIds: number[],
 ): Promise<Set<number>> {
   const ok = new Set<number>();
-  if (!candidateIds.length) return ok;
-
   const chunks = chunkArray(candidateIds, 500);
+
   for (const part of chunks) {
     const placeholders = part.map(() => "?").join(",");
 
@@ -172,24 +83,27 @@ async function getCurrentlyRegisteredStudentIdsForCourseInKy(
         AND lhp.ky_hoc_id = ?
         AND dklhp.sinh_vien_id IN (${placeholders})
     `;
+
     const params: any[] = [monHocId, kyHocId, ...part];
 
-    const [rows] = await conn.query<RowDataPacket[]>(sql, params);
-    for (const r of rows as any[]) ok.add(Number(r.sinh_vien_id));
+    const [rowsAny] = await conn.query(sql, params);
+    const rows = rowsAny as RowDataPacket[];
+
+    for (const r of rows as any[]) ok.add(Number((r as any).sinh_vien_id));
   }
 
   return ok;
 }
 
+/** Tổng tín chỉ PASS (xep_loai_id<=4), DISTINCT mon_hoc_id */
 async function getStudentsMeetingMinCredits(
-  conn: PoolConnection,
+  conn: TxConn,
   minCredits: number,
   candidateIds: number[],
 ): Promise<Set<number>> {
   const ok = new Set<number>();
-  if (!candidateIds.length) return ok;
-
   const chunks = chunkArray(candidateIds, 400);
+
   for (const part of chunks) {
     const placeholders = part.map(() => "?").join(",");
 
@@ -208,34 +122,41 @@ async function getStudentsMeetingMinCredits(
     `;
 
     const params: any[] = [...part, minCredits];
-    const [rows] = await conn.query<RowDataPacket[]>(sql, params);
-    for (const r of rows as any[]) ok.add(Number(r.sinh_vien_id));
+
+    const [rowsAny] = await conn.query(sql, params);
+    const rows = rowsAny as RowDataPacket[];
+
+    for (const r of rows as any[]) ok.add(Number((r as any).sinh_vien_id));
   }
 
   return ok;
 }
 
-async function filterByPrerequisites(
-  conn: PoolConnection,
+/** Lọc tiên quyết cho 1 môn trong 1 kỳ */
+async function filterByPrerequisitesInKy(
+  conn: TxConn,
   monHocId: number,
   kyHocId: number,
   candidateIds: number[],
 ): Promise<number[]> {
-  const [prereqRows] = await conn.query<RowDataPacket[]>(
+  const [prereqRowsAny] = await conn.query(
     `
-      SELECT mon_hoc_tien_quyet_id, loai_dieu_kien, diem_toi_thieu, tin_chi_toi_thieu
-      FROM mon_hoc_tien_quyet
-      WHERE mon_hoc_id = ?
+    SELECT mon_hoc_tien_quyet_id, loai_dieu_kien, diem_toi_thieu, tin_chi_toi_thieu
+    FROM mon_hoc_tien_quyet
+    WHERE mon_hoc_id = ?
     `,
     [monHocId],
   );
+  const prereqRows = prereqRowsAny as RowDataPacket[];
 
   if (!prereqRows.length) return candidateIds;
 
   let current = candidateIds.slice();
 
-  for (const pr of prereqRows as any as PrereqRow[]) {
+  for (const prAny of prereqRows as any[]) {
     if (!current.length) break;
+
+    const pr = prAny as PrereqRow;
 
     let satisfied = new Set<number>();
 
@@ -279,42 +200,49 @@ async function filterByPrerequisites(
   return current;
 }
 
-async function allocateOneMonHocInKyUsingMap(params: {
-  mon_hoc_id: number;
+/** =========================
+ *  ✅ 1) PHÂN BỔ 1 MÔN TRONG KỲ (FIX capacity check)
+ *  - so_luong_can_phan_bo = TỔNG SỐ SV muốn phân bổ cho MÔN đó (trên tất cả LHP)
+ *  ========================= */
+export async function allocateSinhVienToMonHocInKy(params: {
   ky_hoc_id: number;
-  trang_thai_id: number;
-  ghi_chu: string;
-  configMin: number;
-  configMax: number;
-  creditMap: Map<number, number>;
-  so_luong_can_phan_bo?: number;
-}): Promise<AllocateResult> {
-  const {
-    mon_hoc_id,
-    ky_hoc_id,
-    trang_thai_id,
-    ghi_chu,
-    configMin,
-    configMax,
-    creditMap,
-    so_luong_can_phan_bo,
-  } = params;
+  mon_hoc_id: number;
+  so_luong_can_phan_bo?: number; // total requested for this subject across all sections
+  trang_thai_id?: number;
+  ghi_chu?: string;
+}) {
+  const ky_hoc_id = Number(params.ky_hoc_id);
+  const mon_hoc_id = Number(params.mon_hoc_id);
+  const trang_thai_id = params.trang_thai_id ?? 1;
+  const ghi_chu = params.ghi_chu ?? "PHAN_BO_TU_DONG";
 
-  const conn = await pool.getConnection();
+  const requested =
+    params.so_luong_can_phan_bo != null
+      ? Number(params.so_luong_can_phan_bo)
+      : undefined;
+
+  if (requested != null && (!Number.isFinite(requested) || requested <= 0)) {
+    return { ok: false, error: "SO_LUONG_CAN_PHAN_BO_INVALID" };
+  }
+
+  const conn = (await pool.getConnection()) as unknown as TxConn;
+
   try {
     await conn.beginTransaction();
 
-    const [mhRows] = await conn.query<RowDataPacket[]>(
-      `SELECT id, so_tin_chi FROM mon_hoc WHERE id = ? LIMIT 1`,
+    // check môn tồn tại
+    const [mhAny] = await conn.query(
+      `SELECT id FROM mon_hoc WHERE id = ? LIMIT 1`,
       [mon_hoc_id],
     );
-    if (!mhRows.length) {
+    const mh = mhAny as RowDataPacket[];
+    if (!mh.length) {
       await conn.rollback();
-      return { ok: false, error: "MON_HOC_NOT_FOUND", mon_hoc_id, ky_hoc_id };
+      return { ok: false, error: "MON_HOC_NOT_FOUND" };
     }
-    const soTinMon = Number((mhRows as any[])[0].so_tin_chi);
 
-    const [lhpRows] = await conn.query<RowDataPacket[]>(
+    // ✅ LOCK TOÀN BỘ LHP của môn trong kỳ (KHÔNG LIMIT 1)
+    const [lhpRowsAny] = await conn.query(
       `
       SELECT id, si_so_toi_da, IFNULL(si_so_thuc_te, 0) AS si_so_thuc_te
       FROM lop_hoc_phan
@@ -325,15 +253,11 @@ async function allocateOneMonHocInKyUsingMap(params: {
       `,
       [mon_hoc_id, ky_hoc_id],
     );
+    const lhpRows = lhpRowsAny as RowDataPacket[];
 
     if (!lhpRows.length) {
       await conn.rollback();
-      return {
-        ok: false,
-        error: "NO_LOP_HOC_PHAN_FOR_THIS_MON_HOC_IN_KY",
-        mon_hoc_id,
-        ky_hoc_id,
-      };
+      return { ok: false, error: "NO_LOP_HOC_PHAN_FOR_THIS_MON_HOC_IN_KY" };
     }
 
     const sections = (lhpRows as any[]).map((r) => {
@@ -344,323 +268,235 @@ async function allocateOneMonHocInKyUsingMap(params: {
       };
     });
 
+    // ✅ tổng sức chứa khả dụng của TẤT CẢ lớp học phần môn đó trong kỳ
     const totalCapacity = sections.reduce((s, x) => s + x.remaining, 0);
 
-    let requestedPerSection: number | null = null;
-    if (so_luong_can_phan_bo != null) {
-      const n = Number(so_luong_can_phan_bo);
-      if (!Number.isFinite(n) || n <= 0) {
-        await conn.rollback();
-        return {
-          ok: false,
-          error: "SO_LUONG_CAN_PHAN_BO_INVALID",
-          mon_hoc_id,
-          ky_hoc_id,
-        };
-      }
-      requestedPerSection = n;
-
-      const notEnough = sections
-        .filter((s) => s.remaining < n)
-        .map((s) => ({
-          lop_hoc_phan_id: s.lop_hoc_phan_id,
-          remaining: s.remaining,
-        }));
-
-      if (notEnough.length) {
-        await conn.rollback();
-        return {
-          ok: false,
-          error: "SO_LUONG_VUOT_SI_SO_LOP_HOC_PHAN",
-          mon_hoc_id,
-          ky_hoc_id,
-          requested_per_section: n,
-          not_enough_sections: notEnough,
-        };
-      }
+    if (totalCapacity <= 0) {
+      await conn.commit();
+      return {
+        ok: true,
+        ky_hoc_id,
+        mon_hoc_id,
+        total_capacity: 0,
+        requested_total: requested ?? 0,
+        allocated_total: 0,
+        allocated_detail: [],
+        skipped: { already_registered: 0, not_eligible: 0 },
+      };
     }
-    const [candidateRows] = await conn.query<RowDataPacket[]>(
+
+    // ✅ FIX BUG: check theo TỔNG capacity
+    if (requested != null && requested > totalCapacity) {
+      await conn.rollback();
+      return {
+        ok: false,
+        error: "SO_LUONG_VUOT_TONG_SI_SO_KHA_DUNG_MON_HOC",
+        ky_hoc_id,
+        mon_hoc_id,
+        requested_total: requested,
+        total_capacity: totalCapacity,
+        sections,
+      };
+    }
+
+    const takeCount = requested ?? totalCapacity;
+
+    // Lấy SV ACTIVE chưa đăng ký môn này trong kỳ (ưu tiên id nhỏ)
+    const [candidateRowsAny] = await conn.query(
       `
       SELECT sv.id
       FROM sinh_vien sv
-      WHERE sv.trang_thai_id = 1
-        AND NOT EXISTS (
-          SELECT 1
-          FROM dang_ky_lop_hoc_phan dklhp
-          JOIN lop_hoc_phan lhp ON lhp.id = dklhp.lop_hoc_phan_id
-          WHERE dklhp.sinh_vien_id = sv.id
-            AND lhp.mon_hoc_id = ?
-            AND lhp.ky_hoc_id = ?
-        )
+      LEFT JOIN (
+        SELECT DISTINCT dklhp.sinh_vien_id
+        FROM dang_ky_lop_hoc_phan dklhp
+        JOIN lop_hoc_phan lhp ON lhp.id = dklhp.lop_hoc_phan_id
+        WHERE lhp.mon_hoc_id = ?
+          AND lhp.ky_hoc_id = ?
+      ) reg ON reg.sinh_vien_id = sv.id
+      WHERE reg.sinh_vien_id IS NULL
+        AND sv.trang_thai_id = 1
       ORDER BY sv.id ASC
       `,
       [mon_hoc_id, ky_hoc_id],
     );
+    const candidateRows = candidateRowsAny as RowDataPacket[];
 
-    const candidates0 = (candidateRows as any[]).map((r) => Number(r.id));
+    const allCandidates = (candidateRows as any[]).map((r) => Number(r.id));
 
-    const candidates1 = candidates0.filter((id) => {
-      const cur = creditMap.get(id) ?? 0;
-      return cur + soTinMon <= configMax;
-    });
-    const overMaxCount = candidates0.length - candidates1.length;
-
-    const needMin: number[] = [];
-    const others: number[] = [];
-    for (const id of candidates1) {
-      const cur = creditMap.get(id) ?? 0;
-      if (cur < configMin) needMin.push(id);
-      else others.push(id);
-    }
-    const orderedCandidates = [...needMin, ...others];
-
-    const eligibleAfterPrereq = await filterByPrerequisites(
+    // Lọc tiên quyết
+    const eligibleAfterPrereq = await filterByPrerequisitesInKy(
       conn,
       mon_hoc_id,
       ky_hoc_id,
-      orderedCandidates,
+      allCandidates,
     );
-    const notEligibleCount =
-      orderedCandidates.length - eligibleAfterPrereq.length;
+    const notEligibleCount = allCandidates.length - eligibleAfterPrereq.length;
 
-    let willAllocateTotal = Math.min(totalCapacity, eligibleAfterPrereq.length);
-
-    if (requestedPerSection != null) {
-      willAllocateTotal = requestedPerSection * sections.length;
-
-      if (eligibleAfterPrereq.length < willAllocateTotal) {
-        await conn.rollback();
-        return {
-          ok: false,
-          error: "KHONG_DU_SINH_VIEN_DU_DIEU_KIEN",
-          mon_hoc_id,
-          ky_hoc_id,
-          requested_per_section: requestedPerSection,
-          required_total: willAllocateTotal,
-          eligible_total: eligibleAfterPrereq.length,
-        };
-      }
-    }
-
-    if (willAllocateTotal <= 0) {
-      await conn.commit();
-      return {
-        ok: true,
-        mon_hoc_id,
-        ky_hoc_id,
-        total_capacity: totalCapacity,
-        requested_per_section: requestedPerSection,
-        allocated_total: 0,
-        allocated_detail: [],
-        skipped: {
-          not_eligible: notEligibleCount,
-          over_max_credits: overMaxCount,
-        },
-      };
-    }
-
-    const eligible = eligibleAfterPrereq.slice(0, willAllocateTotal);
+    // ✅ chỉ lấy đúng TỔNG số cần phân bổ
+    const eligible = eligibleAfterPrereq.slice(0, takeCount);
 
     let ptr = 0;
+    let remainingNeed = eligible.length;
+
+    const allocatedDetail: Array<{
+      lop_hoc_phan_id: number;
+      allocated: number;
+      sinh_vien_ids: number[];
+    }> = [];
+
     let allocatedTotal = 0;
-    const allocatedDetail: AllocateResult extends { ok: true }
-      ? AllocateResult["allocated_detail"]
-      : any[] = [];
 
     for (const sec of sections) {
-      const takeCount =
-        requestedPerSection != null ? requestedPerSection : sec.remaining;
-      if (takeCount <= 0) continue;
-      if (ptr >= eligible.length) break;
+      if (sec.remaining <= 0) continue;
+      if (remainingNeed <= 0) break;
 
-      const takeIds = eligible.slice(ptr, ptr + takeCount);
+      const canTake = Math.min(sec.remaining, remainingNeed);
+      const takeIds = eligible.slice(ptr, ptr + canTake);
       if (!takeIds.length) break;
 
-      let insertedTotalForSection = 0;
+      const valuesSql = takeIds
+        .map(() => `(?, ?, NOW(), ?, ?, NOW(), NOW())`)
+        .join(", ");
+      const insertSql = `
+        INSERT INTO dang_ky_lop_hoc_phan
+          (sinh_vien_id, lop_hoc_phan_id, ngay_dang_ky, trang_thai_id, ghi_chu, created_at, updated_at)
+        VALUES ${valuesSql}
+      `;
 
-      for (const part of chunkArray(takeIds, 300)) {
-        const valuesSql = part
-          .map(() => `(?, ?, NOW(), ?, ?, NOW(), NOW())`)
-          .join(", ");
-        const insertSql = `
-          INSERT INTO dang_ky_lop_hoc_phan
-            (sinh_vien_id, lop_hoc_phan_id, ngay_dang_ky, trang_thai_id, ghi_chu, created_at, updated_at)
-          VALUES ${valuesSql}
-        `;
-
-        const insertParams: any[] = [];
-        for (const svId of part)
-          insertParams.push(svId, sec.lop_hoc_phan_id, trang_thai_id, ghi_chu);
-
-        const [ins] = await conn.query<ResultSetHeader>(
-          insertSql,
-          insertParams,
-        );
-        insertedTotalForSection += ins.affectedRows;
+      const insertParams: any[] = [];
+      for (const svId of takeIds) {
+        insertParams.push(svId, sec.lop_hoc_phan_id, trang_thai_id, ghi_chu);
       }
 
-      if (insertedTotalForSection > 0) {
-        await conn.query<ResultSetHeader>(
+      const [insAny] = await conn.query(insertSql, insertParams);
+      const insertedCount = Number(
+        (insAny as ResultSetHeader as any).affectedRows ?? 0,
+      );
+
+      if (insertedCount > 0) {
+        await conn.query(
           `
           UPDATE lop_hoc_phan
           SET si_so_thuc_te = IFNULL(si_so_thuc_te, 0) + ?,
               updated_at = NOW()
           WHERE id = ?
           `,
-          [insertedTotalForSection, sec.lop_hoc_phan_id],
+          [insertedCount, sec.lop_hoc_phan_id],
         );
       }
 
-      allocatedTotal += insertedTotalForSection;
+      allocatedTotal += insertedCount;
       allocatedDetail.push({
         lop_hoc_phan_id: sec.lop_hoc_phan_id,
-        allocated: insertedTotalForSection,
-        sinh_vien_ids: takeIds.slice(0, insertedTotalForSection),
+        allocated: insertedCount,
+        sinh_vien_ids: takeIds.slice(0, insertedCount),
       });
 
-      ptr += takeIds.length;
+      ptr += canTake;
+      remainingNeed -= canTake;
     }
 
     await conn.commit();
 
-    if (allocatedTotal > 0) {
-      for (const d of allocatedDetail) {
-        for (const svId of d.sinh_vien_ids) {
-          const cur = creditMap.get(svId) ?? 0;
-          creditMap.set(svId, cur + soTinMon);
-        }
-      }
-    }
-
     return {
       ok: true,
-      mon_hoc_id,
       ky_hoc_id,
+      mon_hoc_id,
       total_capacity: totalCapacity,
-      requested_per_section: requestedPerSection,
+      requested_total: takeCount,
+      eligible_total: eligible.length,
       allocated_total: allocatedTotal,
       allocated_detail: allocatedDetail,
       skipped: {
+        already_registered: 0,
         not_eligible: notEligibleCount,
-        over_max_credits: overMaxCount,
       },
     };
   } catch (e: any) {
     await conn.rollback();
-    throw e;
+    return { ok: false, error: e?.message ?? String(e) };
   } finally {
     conn.release();
   }
 }
 
-/** API #1: phân bổ 1 môn trong kỳ */
-export async function allocateSinhVienToMonHocInKy(params: {
-  mon_hoc_id: number;
-  ky_hoc_id: number;
-  trang_thai_id?: number;
-  ghi_chu?: string;
-  so_luong_can_phan_bo?: number; // số SV / mỗi LHP
-}): Promise<AllocateResult> {
-  const cfg = await getTinChiConfig(params.ky_hoc_id);
-  if (!cfg.ok)
-    return {
-      ok: false,
-      error: cfg.error,
-      mon_hoc_id: params.mon_hoc_id,
-      ky_hoc_id: params.ky_hoc_id,
-    };
-
-  const creditMap = await getRegisteredCreditsMapInKy(params.ky_hoc_id);
-
-  return allocateOneMonHocInKyUsingMap({
-    mon_hoc_id: params.mon_hoc_id,
-    ky_hoc_id: params.ky_hoc_id,
-    trang_thai_id: params.trang_thai_id ?? 1,
-    ghi_chu: params.ghi_chu ?? "PHAN_BO_TU_DONG",
-    configMin: cfg.min,
-    configMax: cfg.max,
-    creditMap,
-    so_luong_can_phan_bo: params.so_luong_can_phan_bo,
-  });
-}
-
-/** API #2: phân bổ nhiều môn trong kỳ */
+/** =========================
+ *  ✅ 2) BULK: PHÂN BỔ NHIỀU MÔN TRONG KỲ
+ *  - so_luong_can_phan_bo áp dụng "mỗi môn" (tổng cho môn đó)
+ *  - môn nào fail thì đẩy vào errors, không làm hỏng môn khác
+ *  ========================= */
 export async function allocateSinhVienToNhieuMonHoc(params: {
   ky_hoc_id: number;
   mon_hoc_ids: number[];
+  so_luong_can_phan_bo?: number; // per subject total
   trang_thai_id?: number;
   ghi_chu?: string;
-  so_luong_can_phan_bo?: number; // số SV / mỗi LHP (áp dụng cho mỗi môn)
 }) {
-  const cfg = await getTinChiConfig(params.ky_hoc_id);
-  if (!cfg.ok) {
-    return { ok: false, error: cfg.error, ky_hoc_id: params.ky_hoc_id };
-  }
+  const ky_hoc_id = Number(params.ky_hoc_id);
+  const mon_hoc_ids = Array.from(
+    new Set(
+      (params.mon_hoc_ids ?? [])
+        .map(Number)
+        .filter((x) => Number.isFinite(x) && x > 0),
+    ),
+  );
 
-  const creditMap = await getRegisteredCreditsMapInKy(params.ky_hoc_id);
-  const uniqueMonHocIds = Array.from(
-    new Set(params.mon_hoc_ids.map(Number)),
-  ).filter((x) => x > 0);
+  if (!mon_hoc_ids.length) return { ok: false, error: "MON_HOC_IDS_EMPTY" };
 
-  const results: AllocateResult[] = [];
-  const errors: Array<{ mon_hoc_id: number; error: string; detail: any }> = [];
+  const results: any[] = [];
+  const errors: any[] = [];
 
-  for (const mon_hoc_id of uniqueMonHocIds) {
-    try {
-      const r = await allocateOneMonHocInKyUsingMap({
-        mon_hoc_id,
-        ky_hoc_id: params.ky_hoc_id,
-        trang_thai_id: params.trang_thai_id ?? 1,
-        ghi_chu: params.ghi_chu ?? "PHAN_BO_TU_DONG",
-        configMin: cfg.min,
-        configMax: cfg.max,
-        creditMap,
-        so_luong_can_phan_bo: params.so_luong_can_phan_bo,
-      });
+  for (const mon_hoc_id of mon_hoc_ids) {
+    const r = await allocateSinhVienToMonHocInKy({
+      ky_hoc_id,
+      mon_hoc_id,
+      so_luong_can_phan_bo: params.so_luong_can_phan_bo,
+      trang_thai_id: params.trang_thai_id,
+      ghi_chu: params.ghi_chu,
+    });
 
-      if (r.ok) results.push(r);
-      else errors.push({ mon_hoc_id, error: r.error, detail: r });
-    } catch (e: any) {
-      errors.push({ mon_hoc_id, error: e?.message ?? String(e), detail: null });
-    }
+    if ((r as any).ok) results.push(r);
+    else errors.push(r);
   }
 
   return {
     ok: true,
-    ky_hoc_id: params.ky_hoc_id,
-    config: { so_tin_chi_toi_thieu: cfg.min, so_tin_chi_toi_da: cfg.max },
-    requested_per_section: params.so_luong_can_phan_bo ?? null,
-    processed: results.length,
-    failed: errors.length,
+    ky_hoc_id,
+    requested_per_subject: params.so_luong_can_phan_bo ?? null,
     results,
     errors,
   };
 }
 
-/** API #3: truyền ky_hoc_id -> tự phân bổ tất cả môn có LHP trong kỳ */
+/** =========================
+ *  ✅ 3) AUTO ALL: PHÂN BỔ TẤT CẢ MÔN CÓ LHP TRONG KỲ
+ *  ========================= */
 export async function allocateSinhVienToAllMonHocInKy(params: {
   ky_hoc_id: number;
+  so_luong_can_phan_bo?: number;
   trang_thai_id?: number;
   ghi_chu?: string;
-  so_luong_can_phan_bo?: number; // số SV / mỗi LHP
 }) {
-  const [rows] = await pool.query<RowDataPacket[]>(
+  const ky_hoc_id = Number(params.ky_hoc_id);
+
+  const [rowsAny] = await pool.query(
     `
     SELECT DISTINCT mon_hoc_id
     FROM lop_hoc_phan
     WHERE ky_hoc_id = ?
     ORDER BY mon_hoc_id ASC
     `,
-    [params.ky_hoc_id],
+    [ky_hoc_id],
   );
+  const rows = rowsAny as RowDataPacket[];
 
-  const monHocIds = (rows as any[]).map((r) => Number(r.mon_hoc_id));
+  const mon_hoc_ids = (rows as any[]).map((r) => Number(r.mon_hoc_id));
 
   return allocateSinhVienToNhieuMonHoc({
-    ky_hoc_id: params.ky_hoc_id,
-    mon_hoc_ids: monHocIds,
+    ky_hoc_id,
+    mon_hoc_ids,
+    so_luong_can_phan_bo: params.so_luong_can_phan_bo,
     trang_thai_id: params.trang_thai_id,
     ghi_chu: params.ghi_chu,
-    so_luong_can_phan_bo: params.so_luong_can_phan_bo,
   });
 }
