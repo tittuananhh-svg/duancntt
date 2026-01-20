@@ -495,7 +495,7 @@ export async function getMonHocTheoKy(ky_hoc_id: number) {
   const [rows] = await pool.execute<any[]>(
     `
       SELECT
-        mh.ma_mon       AS ma_mon,
+        mh.ma_mon       AS ma_mon,  mh.id       AS id_mon,
         mh.ten_mon      AS ten_mon,
         COUNT(lhp.id)   AS so_lich,
 

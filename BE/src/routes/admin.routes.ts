@@ -76,6 +76,7 @@ import {
   createLichThi,
   getLichThiList,
 } from "../controllers/lichThi.controller";
+import { phanBoSinhVienVaoLichThi } from "../controllers/phanBoLichThi.controller";
 
 const router = Router();
 
@@ -178,5 +179,6 @@ router.get("/dang-ky/sinh-vien-theo-ky", getSinhVienDaDangKyTrongKyController);
 
 router.post("/lich-thi", createLichThi);
 router.get("/lich-thi", getLichThiList);
+router.post("/lich-thi/phan-bo/:id", phanBoSinhVienVaoLichThi);
 
 export default router;
