@@ -78,9 +78,13 @@ import {
 } from "../controllers/lichThi.controller";
 import { phanBoSinhVienVaoLichThi } from "../controllers/phanBoLichThi.controller";
 import {
-  getSinhVienDaPhanBoLichThiTrongKy,
+  getSinhVienDaPhanBoTrongKy,
   getSinhVienDuDieuKienChuaPhanBoTrongKy,
 } from "../controllers/lichThiSinhVien.controller";
+import {
+  getThoiKhoaBieuGiangVienController,
+  getMeGiangVienController,
+} from "../controllers/teacher.controllers";
 const router = Router();
 
 /* ================== KHOA ================== */
@@ -183,12 +187,12 @@ router.get("/dang-ky/sinh-vien-theo-ky", getSinhVienDaDangKyTrongKyController);
 router.post("/lich-thi", createLichThi);
 router.get("/lich-thi", getLichThiList);
 router.post("/lich-thi/phan-bo/:id", phanBoSinhVienVaoLichThi);
-// GET /api/admin/lich-thi/sinh-vien-da-phan-bo?ky_hoc_id=1
-router.get("/lich-thi/sinh-vien-da-phan-bo", getSinhVienDaPhanBoLichThiTrongKy);
-
-// GET /api/admin/lich-thi/sinh-vien-du-dieu-kien-chua-phan-bo?ky_hoc_id=1
+router.get("/lich-thi/sinh-vien-da-phan-bo", getSinhVienDaPhanBoTrongKy);
 router.get(
   "/lich-thi/sinh-vien-du-dieu-kien-chua-phan-bo",
   getSinhVienDuDieuKienChuaPhanBoTrongKy,
 );
+
+router.get("/getinfo", getMeGiangVienController);
+
 export default router;
