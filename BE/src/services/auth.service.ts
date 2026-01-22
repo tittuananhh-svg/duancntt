@@ -25,7 +25,7 @@ export async function loginService(
   username: string,
   password: string,
   userAgent?: string,
-  ipAddress?: string
+  ipAddress?: string,
 ) {
   // 1. Lấy user từ DB theo username
   const [rows] = await pool.query<DbUser[]>(
@@ -45,7 +45,7 @@ export async function loginService(
     WHERE username = ?
     LIMIT 1
     `,
-    [username]
+    [username],
   );
 
   if (rows.length === 0) {
@@ -72,7 +72,7 @@ export async function loginService(
       userRefId: user.user_ref_id,
     },
     ENV.JWT_ACCESS_SECRET,
-    { expiresIn: "2h" }
+    { expiresIn: "200h" },
   );
 
   // 4. Tạo refresh token (7 ngày)
@@ -98,7 +98,13 @@ export async function loginService(
     VALUES
       (?, ?, ?, ?, ?)
     `,
-    [user.id, refreshTokenHash, userAgent || null, ipAddress || null, expiresAt]
+    [
+      user.id,
+      refreshTokenHash,
+      userAgent || null,
+      ipAddress || null,
+      expiresAt,
+    ],
   );
 
   const refreshTokenId = result.insertId;
@@ -145,7 +151,7 @@ interface DbRefreshToken extends RowDataPacket {
 export async function refreshService(
   refreshToken: string,
   userAgent?: string,
-  ipAddress?: string
+  ipAddress?: string,
 ) {
   try {
     const payload = jwt.verify(refreshToken, ENV.JWT_REFRESH_SECRET) as {
@@ -169,7 +175,7 @@ export async function refreshService(
         AND expires_at > NOW()
       LIMIT 1
       `,
-      [userId, tokenHash]
+      [userId, tokenHash],
     );
 
     if (rows.length === 0) {
@@ -192,7 +198,7 @@ export async function refreshService(
       WHERE id = ?
       LIMIT 1
       `,
-      [rt.user_id]
+      [rt.user_id],
     );
 
     if (userRows.length === 0) {
@@ -209,13 +215,13 @@ export async function refreshService(
         userRefId: user.user_ref_id,
       },
       ENV.JWT_ACCESS_SECRET,
-      { expiresIn: "2h" }
+      { expiresIn: "2h" },
     );
 
     const newRefreshToken = jwt.sign(
       { userId: user.id },
       ENV.JWT_REFRESH_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     const newRefreshTokenHash = crypto
@@ -238,7 +244,7 @@ export async function refreshService(
         ipAddress || null,
         newExpiresAt,
         rt.id,
-      ]
+      ],
     );
 
     return {
@@ -273,7 +279,7 @@ export async function logoutService(refreshToken: string) {
     DELETE FROM refresh_tokens
     WHERE token_hash = ?
     `,
-    [tokenHash]
+    [tokenHash],
   );
 }
 
@@ -303,7 +309,7 @@ export async function changePasswordService(params: {
      FROM users
      WHERE id = ?
      LIMIT 1`,
-    [userId]
+    [userId],
   );
 
   if (rows.length === 0) {
@@ -327,7 +333,7 @@ export async function changePasswordService(params: {
     `UPDATE users
      SET password_hash = ?, updated_at = NOW()
      WHERE id = ?`,
-    [newHash, userId]
+    [newHash, userId],
   );
 
   return result.affectedRows > 0;
@@ -361,7 +367,7 @@ export async function registerService(input: CreateUserInput) {
     WHERE username = ? OR email = ?
     LIMIT 1
     `,
-    [username, email || null]
+    [username, email || null],
   );
 
   if (existRows.length > 0) {
@@ -393,7 +399,7 @@ export async function registerService(input: CreateUserInput) {
       user_type_id,
       user_ref_id,
       1, // trang_thai_id = 1 (active)
-    ]
+    ],
   );
 
   const newUserId = result.insertId;
@@ -414,7 +420,7 @@ export async function registerService(input: CreateUserInput) {
     FROM users
     WHERE id = ?
     `,
-    [newUserId]
+    [newUserId],
   );
 
   const user = rows[0];
@@ -447,12 +453,12 @@ interface FkRow extends RowDataPacket {
 
 function pickDisplayColumn(
   cols: ColumnRow[],
-  referencedColumn: string
+  referencedColumn: string,
 ): string | null {
   const stringCols = cols.filter((c) =>
     ["char", "varchar", "text", "mediumtext", "longtext"].includes(
-      c.DATA_TYPE.toLowerCase()
-    )
+      c.DATA_TYPE.toLowerCase(),
+    ),
   );
 
   if (stringCols.length === 0) return null;
@@ -466,7 +472,7 @@ function pickDisplayColumn(
   candidate = stringCols.find(
     (c) =>
       c.COLUMN_NAME.toLowerCase() !== referencedColumn.toLowerCase() &&
-      !c.COLUMN_NAME.toLowerCase().includes("id")
+      !c.COLUMN_NAME.toLowerCase().includes("id"),
   );
   if (candidate) return candidate.COLUMN_NAME;
 
@@ -482,7 +488,7 @@ export async function selectWithFkRealText(tableName: string) {
       AND TABLE_NAME = ?
     ORDER BY ORDINAL_POSITION
     `,
-    [dbName, tableName]
+    [dbName, tableName],
   );
   if (columns.length === 0) {
     throw new Error(`Table ${tableName} not found in database ${dbName}`);
@@ -495,7 +501,7 @@ export async function selectWithFkRealText(tableName: string) {
       AND TABLE_NAME = ?
       AND REFERENCED_TABLE_NAME IS NOT NULL
     `,
-    [dbName, tableName]
+    [dbName, tableName],
   );
 
   const fkMap = new Map<
@@ -520,7 +526,7 @@ export async function selectWithFkRealText(tableName: string) {
       WHERE TABLE_SCHEMA = ?
         AND TABLE_NAME = ?
       `,
-      [dbName, refTable]
+      [dbName, refTable],
     );
 
     const displayColumn = pickDisplayColumn(refCols, refColumn);
@@ -544,7 +550,7 @@ export async function selectWithFkRealText(tableName: string) {
     const fkInfo = fkMap.get(colName);
     if (fkInfo && fkInfo.displayColumn) {
       selectParts.push(
-        `${fkInfo.alias}.\`${fkInfo.displayColumn}\` AS \`${colName}_text\``
+        `${fkInfo.alias}.\`${fkInfo.displayColumn}\` AS \`${colName}_text\``,
       );
     } else if (fkInfo && !fkInfo.displayColumn) {
       selectParts.push(`NULL AS \`${colName}_text\``);
@@ -557,7 +563,7 @@ export async function selectWithFkRealText(tableName: string) {
     const { refTable, refColumn, alias } = fkInfo;
 
     joinParts.push(
-      `LEFT JOIN \`${refTable}\` AS ${alias} ON ${alias}.\`${refColumn}\` = t.\`${colName}\``
+      `LEFT JOIN \`${refTable}\` AS ${alias} ON ${alias}.\`${refColumn}\` = t.\`${colName}\``,
     );
   }
 
