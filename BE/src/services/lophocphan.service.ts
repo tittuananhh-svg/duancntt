@@ -518,7 +518,7 @@ export async function getPhongTheoKy(ky_hoc_id: number) {
   const [rows] = await pool.execute<any[]>(
     `
       SELECT DISTINCT
-        p.ma_phong AS ma_phong,
+        p.ma_phong AS ma_phong,p.toa_nha AS toa_nha,
         p.suc_chua AS suc_chua_toi_da
       FROM lop_hoc_phan lhp
       JOIN phong_hoc p ON p.id = lhp.phong_id
